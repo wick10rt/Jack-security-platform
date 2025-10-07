@@ -1,0 +1,19 @@
+version: '3.8'
+
+# 啟動 D3–資料庫服務 (postgreSQL)
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: security_platform_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_DB=platform_db
+      - POSTGRES_USER=platform_user
+      - POSTGRES_PASSWORD=wick10rt
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data:
