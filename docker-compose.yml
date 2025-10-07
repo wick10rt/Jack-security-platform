@@ -13,7 +13,7 @@ services:
       - POSTGRES_USER=platform_user
       - POSTGRES_PASSWORD=wick10rt
     ports:
-      - "5432:5432"
+      - "25000:5432"
 
 volumes:
   postgres_data:
