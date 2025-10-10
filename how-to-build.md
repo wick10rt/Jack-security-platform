@@ -14,12 +14,10 @@
 ```bash
 git clone https://github.com/wick10rt/Jack-security-platform.git
 cd Jack-security-platform/backend
-# 建立虛擬環境
 python -m venv venv
-source venv/bin/activate  # Linux/macOS
-# .\venv\Scripts\activate  # Windows PowerShell
+source venv/bin/activate  
+.\venv\Scripts\activate  
 
-# 安裝依賴套件
 pip install -r requirements.txt
 docker-compose up -d
 python manage.py migrate

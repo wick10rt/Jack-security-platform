@@ -3,8 +3,8 @@
 ## 開發人員-老張
 
 10/7 創建環境,引入 django 框架,初始化 django 跟 postgresql <br>
-10/8 定義資料庫結構 ,建立django的資料庫模型應用到postgresql,
-把模型註冊到管理員後台
+10/8 定義資料庫結構 ,註冊到F5 ,開發D4-管理員後台<br>
+10/10 B2 API: 開發 /labs/ 的api
 
 
 
