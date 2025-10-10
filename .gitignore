@@ -1,30 +1,33 @@
-# Byte-compiled / optimized / DLL files
+# Python 編譯檔案
+*.pyc
+*.pyo
 __pycache__/
-*.py[cod]
-*$py.class
 
-# Distribution / packaging
-build/
-dist/
-eggs/
-*.egg-info/
-
-# Virtual environment
-.venv/
-venv/
+# 虛擬環境資料夾
 env/
+venv/
 ENV/
+.venv/
 
-# IDE files
-.vscode/
-.idea/
+# 敏感設定檔
+local_settings.py
+.env
 
-# Django stuff:
-*.log
+# Django 資料庫檔案
 db.sqlite3
-media/
-staticfiles/
+db.sqlite3-journal
 
-# System files
+# 上傳的媒體檔案
+media/
+
+# 日誌檔案
+*.log
+
+# IDE 設定檔
+.idea/
+.vscode/
+*.iml
+
+# 操作系統產生的檔案
 .DS_Store
 Thumbs.db
