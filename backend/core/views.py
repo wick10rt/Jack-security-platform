@@ -6,7 +6,7 @@ from .models import Lab
 from .serializers import LabSerializer, LabDetailSerializer
 
 #B2-實驗內容服務
-# 定義api請求時要回傳的view
+# 定義api請求時要回傳資料的view
 
 # EE-3 獲取所有實驗清單
 class LabListView(generics.ListAPIView):

@@ -1,4 +1,3 @@
-
 # Jack Security Platform
 
 ## 系統需求
@@ -9,15 +8,32 @@
 
 ---
 
-## 1️⃣ 取得專案
+## 取得專案
 
 ```bash
 git clone https://github.com/wick10rt/Jack-security-platform.git
-cd Jack-security-platform/backend
-python -m venv venv
-source venv/bin/activate  
-.\venv\Scripts\activate  
+```
 
+## 虛擬環境
+
+```bash
+python -m venv venv
+source venv/bin/activate
+.\venv\Scripts\activate
+```
+
+## 安裝依賴
+
+```bash
 pip install -r requirements.txt
+```
+
+## 初始化
+
+```bash
 docker-compose up -d
+
 python manage.py migrate
+
+python manage.py createsuperuser
+```
