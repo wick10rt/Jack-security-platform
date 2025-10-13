@@ -31,6 +31,10 @@ pip install -r requirements.txt
 ## 初始化
 
 ```bash
+# ports:
+#   - "25000:5432"  >> "5432:5432"
+nvim docker-compose.yml
+
 docker-compose up -d
 
 python manage.py migrate

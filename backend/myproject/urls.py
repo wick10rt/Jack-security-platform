@@ -17,10 +17,22 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path
-from django.urls import include
+from django.urls import include, path
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+) 
+from core.views import UserRegisterView
+
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    
+    #B1-登入驗證服務
+
+    #EE-0 註冊api
+    path("auth/register/", UserRegisterView.as_view(), name="register"),
+    #EE-1,EE-9 登入api
+    path("auth/login/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+
     path("", include("core.urls")),
 ]
