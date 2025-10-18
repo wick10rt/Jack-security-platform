@@ -6,4 +6,5 @@ psycopg2-binary==2.9.10
 PyJWT==2.10.1
 setuptools==78.1.1
 sqlparse==0.5.3
+tzdata==2025.2
 wheel==0.45.1

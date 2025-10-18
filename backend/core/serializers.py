@@ -1,7 +1,7 @@
 # core/serializers.py
 
 from rest_framework import serializers
-from .models import Lab, User, LabCompletion
+from .models import Lab, User, LabCompletion, ActiveInstance
 
 #B2-實驗內容服務
 # 定義Lab模型的序列化器
@@ -45,3 +45,17 @@ class LabCompletionSerializer(serializers.ModelSerializer):
     class Meta:
         model = LabCompletion
         fields=['id','status','user','lab']
+
+
+#B4-把積分配服務
+#定義ActiveInstance模型的序列化器
+
+#使用者啟動靶機的序列化器(/labs/<id>/launch/)
+class ActiveInstanceSerializer(serializers.ModelSerializer):
+    user = serializers.StringRelatedField(read_only=True)
+    lab = serializers.StringRelatedField(read_only=True)
+
+    class Meta:
+        model = ActiveInstance
+        fields = ['id','user','lab','instance_url','expires_at']  
+        read_only_fields = ['id','user','lab','instance_url','expires_at']  
