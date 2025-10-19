@@ -50,3 +50,8 @@ python manage.py createsuperuser
 
 python manage.py runserver
 ```
+
+
+# 影片連結
+
+https://youtu.be/k9-yvXRnK0E
