@@ -47,7 +47,7 @@ class LabCompletionSerializer(serializers.ModelSerializer):
         fields=['id','status','user','lab']
 
 
-#B4-把積分配服務
+#B4-靶機分配服務
 #定義ActiveInstance模型的序列化器
 
 #使用者啟動靶機的序列化器(/labs/<id>/launch/)
@@ -59,3 +59,11 @@ class ActiveInstanceSerializer(serializers.ModelSerializer):
         model = ActiveInstance
         fields = ['id','user','lab','instance_url','expires_at']  
         read_only_fields = ['id','user','lab','instance_url','expires_at']  
+
+
+#B5-答案驗證服務
+#定義答案提交的序列化器沒有模型
+
+#使用者提交答案的序列化器(/labs/<id>/submit/)
+class SubmissionSerializer(serializers.Serializer):
+    answer = serializers.CharField(max_length=255)

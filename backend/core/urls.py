@@ -1,7 +1,7 @@
 # core/urls.py
 
 from django.urls import path
-from .views import LabListView, LabDetailView, UserProgressView, LaunchInstanceView
+from .views import LabListView, LabDetailView, UserProgressView, LaunchInstanceView, SubmitAnswerView
 
 
 urlpatterns = [
@@ -19,5 +19,7 @@ urlpatterns = [
     #定義B4的view的url路徑
     path('labs/<uuid:id>/launch/',LaunchInstanceView.as_view(), name='launch-instance'),
 
-    
+    #B5-答案驗證服務
+    #定義B5的view的url路徑
+    path('labs/<uuid:id>/submit/', SubmitAnswerView.as_view(), name='lab_submit'),
 ]

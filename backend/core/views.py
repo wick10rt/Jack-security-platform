@@ -11,7 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .models import Lab, User,LabCompletion,ActiveInstance
-from .serializers import (LabSerializer, LabDetailSerializer, UserRegisterSerializer,LabCompletionSerializer,ActiveInstanceSerializer)
+from .serializers import (LabSerializer, LabDetailSerializer, UserRegisterSerializer,LabCompletionSerializer,ActiveInstanceSerializer,SubmissionSerializer)
 
 
 #B2-實驗內容服務
@@ -60,8 +60,8 @@ class LaunchInstanceView(generics.GenericAPIView):
     serializer_class = ActiveInstanceSerializer
     permission_classes = [IsAuthenticated]
 
-    #獲取啟動Lab的物件
     def post(self, request, *args, **kwargs):
+        #獲取啟動Lab的物件
         lab_id = self.kwargs.get('id')
         lab = get_object_or_404(Lab, id=lab_id)
         user = request.user
@@ -73,6 +73,7 @@ class LaunchInstanceView(generics.GenericAPIView):
                 status = status.HTTP_409_CONFLICT
             )
 
+        #測試用
         test_instance_url = f"http://test/{user.username}/{lab.id}.com"
         test_container_id = "test_container_12345"
 
@@ -88,3 +89,45 @@ class LaunchInstanceView(generics.GenericAPIView):
 
         serializer = self.get_serializer(instance)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+#B5-答案驗證服務
+#定義答案驗證的view
+class SubmitAnswerView(generics.GenericAPIView):
+    #EE-6提交答案
+    serializer_class = SubmissionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        #獲取Lab物件
+        lab_id = self.kwargs.get('id')
+        lab = get_object_or_404(Lab, id=lab_id)
+        user = request.user
+        
+        #驗證格式
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        submitted_answer = serializer.validated_data['answer']
+
+        #驗證答案
+        #答案正確
+        if submitted_answer == lab.solution:
+            completion, created = LabCompletion.objects.get_or_create(
+                user=user,
+                lab=lab,
+                defaults=('status': 'pending_reflection')
+            )
+            #如果已有提交成功紀錄,直接更新狀態
+            if not created and completion.status != 'completed':
+                completion.status = 'pending_reflection'
+                completion.save()
+            return Response(
+                {"status" : "pending_reflection"},
+                status = status.HTTP_200_OK
+            )
+        #答案錯誤
+        else:
+            return Response(
+                {"error" : "答案錯誤,請重試"},
+                status = status.HTTP_400_BAD_REQUEST
+            )
