@@ -3,59 +3,87 @@
 ## 系統需求
 
 - Python ≥ 3.13
-- Docker , Docker Compose
+- Docker & Docker Compose
 
 ---
 
-## 取得專案
+### 1. 取得專案
 
 ```bash
 git clone https://github.com/wick10rt/Jack-security-platform.git
 ```
 
-## 虛擬環境
+### 2. 配置環境變數
 
 ```bash
-python -m venv venv
-source venv/bin/activate
-.\venv\Scripts\activate
+#專案根目錄創建.env
+cd Jack-security-platform
+nvim .env
 ```
 
-## 安裝依賴
+```dotenv
+ # .env
+
+ #使用DJANGO自動產生
+ #python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+ SECRET_KEY=your-secret-string
+
+ #postgresql密碼
+ POSTGRES_PASSWORD=your-password
+```
+
+### 3. 啟動服務
+
+a. **啟動資料庫**:
+
+```bash
+docker-compose up -d
+```
+
+b. **虛擬環境**:
+
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate
+```
+
+c. **安裝依賴**:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## 初始化
+d. **資料庫遷移**:
 
 ```bash
-# ports:
-#   - "25000:5432"  >> "5432:5432"
-#   POSTGRES_PASSWORD="your_password"
-#
-nvim docker-compose.yml
-
-docker-compose up -d
-
-#   DATABASE SETTING
-#   "PASSWORD": "your_password"
-#   "PORT": "5432"
-#
-nvim backend\myproject\settings.py
-
 python manage.py migrate
+```
 
+e. **建立管理員帳號**:
+
+```bash
 python manage.py createsuperuser
+```
 
+f. **啟動伺服器**:
+
+```bash
 python manage.py runserver
 ```
+
+透過 http://127.0.0.1:8000/ 進入
+
+---
 
 # 設計圖簡報
 
 https://www.canva.com/design/DAG19OvwFdQ/2WrezFDq9-6eKxDfyPSJXQ/edit?utm_content=DAG19OvwFdQ&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton
 
+---
+
 # 開發成果影片連結
 
-1~3周<br>
+**1~3 周**:
+
 https://youtu.be/k9-yvXRnK0E

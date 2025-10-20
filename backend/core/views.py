@@ -115,7 +115,7 @@ class SubmitAnswerView(generics.GenericAPIView):
             completion, created = LabCompletion.objects.get_or_create(
                 user=user,
                 lab=lab,
-                defaults=('status': 'pending_reflection')
+                defaults={'status': 'pending_reflection'}
             )
             #如果已有提交成功紀錄,直接更新狀態
             if not created and completion.status != 'completed':

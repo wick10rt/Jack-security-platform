@@ -11,7 +11,7 @@ services:
     environment:
       - POSTGRES_DB=platform_db
       - POSTGRES_USER=platform_user
-      - POSTGRES_PASSWORD=wick10rt
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
     ports:
       - "25000:5432"
 
