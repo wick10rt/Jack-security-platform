@@ -51,7 +51,11 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
+# 設計圖簡報
 
-# 影片連結
+https://www.canva.com/design/DAG19OvwFdQ/2WrezFDq9-6eKxDfyPSJXQ/edit?utm_content=DAG19OvwFdQ&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton
 
+# 開發成果影片連結
+
+1~3周<br>
 https://youtu.be/k9-yvXRnK0E
