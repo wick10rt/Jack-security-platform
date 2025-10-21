@@ -22,14 +22,14 @@ nvim .env
 ```
 
 ```dotenv
- # .env
+# .env
 
- #使用DJANGO自動產生
- #python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
- SECRET_KEY=your-secret-string
+#使用DJANGO自動產生
+#python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+SECRET_KEY=your-secret-string
 
- #postgresql密碼
- POSTGRES_PASSWORD=your-password
+#postgresql密碼
+DATABASE_PASSWORD=your-password
 ```
 
 ### 3. 啟動服務
