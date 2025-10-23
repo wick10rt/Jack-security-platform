@@ -60,16 +60,27 @@ class LaunchInstanceView(generics.GenericAPIView):
     serializer_class = ActiveInstanceSerializer
     permission_classes = [IsAuthenticated]
 
+    ACTIVEINSTANCE_LIMIT = 30
+    
     def post(self, request, *args, **kwargs):
         #獲取啟動Lab的物件
         lab_id = self.kwargs.get('id')
         lab = get_object_or_404(Lab, id=lab_id)
         user = request.user
-    
+
+        #檢查靶機是否超過系統限制
+        current_active_count = ActiveInstance.objects.count()
+        if current_active_count >= self.ACTIVEINSTANCE_LIMIT:
+            return Response(
+                {"error": "instance launch failed please try again later if still not work contact admin william -> s1121717@mail.yzu.edu.tw"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+        
+
         #檢查有沒有正在運行的靶機
         if ActiveInstance.objects.filter(user=user).exists():
             return Response(
-                {"error": "你已經正在運行的靶機了"},
+                {"error": "you already have an active instance"},
                 status = status.HTTP_409_CONFLICT
             )
 
@@ -128,6 +139,6 @@ class SubmitAnswerView(generics.GenericAPIView):
         #答案錯誤
         else:
             return Response(
-                {"error" : "答案錯誤,請重試"},
+                {"error" : "wrong answer please try again"},
                 status = status.HTTP_400_BAD_REQUEST
             )
