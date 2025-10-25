@@ -1,6 +1,7 @@
 # core/serializers.py
 
 from rest_framework import serializers
+from django.contrib.auth.password_validation import validate_password
 from .models import Lab, User, LabCompletion, ActiveInstance
 
 #B2-實驗內容服務
@@ -28,6 +29,12 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         model = User
         fields = ['username', 'password']
         extra_kwargs = {'password': {'write_only': True}}
+
+    #確保密碼強度
+    def validate_password(self, value):
+        validate_password(value)
+        return value
+    
 
     def create(self,validated_data):
         user = User.objects.create_user(

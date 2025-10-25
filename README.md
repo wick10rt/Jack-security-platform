@@ -78,7 +78,7 @@ python manage.py runserver
 
 # 設計圖簡報
 
-https://www.canva.com/design/DAG19OvwFdQ/OMonLDO6pZEA0hrzcX1bcw/view?utlId=h4679177af0#27
+https://www.canva.com/design/DAG19OvwFdQ/OMonLDO6pZEA0hrzcX1bcw/view?utlId=h4679177af0#1
 
 ---
 
