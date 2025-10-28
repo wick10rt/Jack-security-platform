@@ -35,7 +35,7 @@ class CommunitySolution(models.Model):
     reflection = models.TextField(blank=False, null=False)
 
     def __str__(self):
-        return f"{self.lab.title} 的其他解法"
+        return f"{self.lab.title} other's solution"
 
 # B3 - 實驗環境服務
 # 儲存所以與使用者學習進度相關的數據
@@ -70,4 +70,4 @@ class ActiveInstance(models.Model):
     expires_at = models.DateTimeField()
 
     def __str__(self):
-        return f"{self.user.username} 在 {self.lab.title} 創建的靶機"
+        return f"{self.user.username} create a {self.lab.title} instance"

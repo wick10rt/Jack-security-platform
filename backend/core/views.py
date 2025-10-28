@@ -3,15 +3,16 @@
 from django.shortcuts import render
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-
+from django.contrib.auth import authenticate
 from datetime import timedelta
 
 from rest_framework import generics, permissions,status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .models import Lab, User,LabCompletion,ActiveInstance
-from .serializers import (LabSerializer, LabDetailSerializer, UserRegisterSerializer,LabCompletionSerializer,ActiveInstanceSerializer,SubmissionSerializer)
+from .models import Lab, User,LabCompletion,ActiveInstance, CommunitySolution
+from .serializers import (LabSerializer, LabDetailSerializer, UserRegisterSerializer,LabCompletionSerializer,ActiveInstanceSerializer,SubmissionSerializer, CommunitySolutionSerializer,MyTokenObtainPairSerializer)
 
 
 #B2-實驗內容服務
@@ -28,6 +29,26 @@ class LabDetailView(generics.RetrieveAPIView):
     serializer_class = LabDetailSerializer
     lookup_field = 'id'
 
+#EE-8 獲取指定實驗的其他人解法
+class CommunitySolutionListView(generics.ListAPIView):
+    serializer_class = CommunitySolutionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        lab_id = self.kwargs.get('id')
+
+        #檢查使用者是否完成實驗
+        is_completed = LabCompletion.objects.filter(
+            user=user,
+            lab_id=lab_id,
+            status='completed').exists()
+        
+        if not is_completed:
+            return CommunitySolution.objects.none()
+        
+        queryset = CommunitySolution.objects.filter(lab_id=lab_id)
+        return queryset
 
 
 #B1-登入驗證服務
@@ -39,8 +60,33 @@ class UserRegisterView(generics.CreateAPIView):
     serializer_class = UserRegisterSerializer
     permission_classes = [permissions.AllowAny]
 
+# EE-1 , EE-9 認證使用者與管理員登入並跳轉正確頁面
+class MyTokenObtainPairView(TokenObtainPairView):
+    serializer_class = MyTokenObtainPairSerializer
 
-#B3-使用者資料服務
+    def post(self, request, *args, **kwargs):
+        username = request.data.get("username")
+        password = request.data.get("password")
+
+        user = authenticate(username=username, password=password)
+
+        if user is None:
+            return Response({"detail": "username or password is wrong"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        response = super().post(request, *args, **kwargs)
+
+        if response.status_code == 200:
+
+            if user.is_staff:
+                response.data["redirect_url"] = "/admin/"
+                
+            else:
+                response.data["redirect_url"] = "/dashboard"
+
+        return response
+    
+
+# B3-使用者資料服務
 #定義使用者進度的view
 
 #EE-2 查看使用者學習進度

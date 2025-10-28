@@ -2,7 +2,9 @@
 
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
-from .models import Lab, User, LabCompletion, ActiveInstance
+from .models import Lab, User, LabCompletion, ActiveInstance, CommunitySolution
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
 
 #B2-實驗內容服務
 # 定義Lab模型的序列化器
@@ -20,6 +22,13 @@ class LabDetailSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'description', 'category']
 
 
+#其他人解法的序列化器(/labs/{lab_id}/solutions/)
+class CommunitySolutionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CommunitySolution
+        fields = ['reflection']
+
+
 #B1-登入驗證服務
 # 定義user模型的序列化器
 
@@ -32,7 +41,8 @@ class UserRegisterSerializer(serializers.ModelSerializer):
 
     #確保密碼強度
     def validate_password(self, value):
-        validate_password(value)
+        user = self.instance or User(username=self.initial_data.get('username'))
+        validate_password(value, user)
         return value
     
 
@@ -43,7 +53,16 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         )
         return user
     
-
+#區分一般user跟管理員的token
+class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token['username'] = user.username
+        token['is_admin'] = user.is_staff
+        return token
+    
+    
 #B3-使用者資料服務
 #定義LabCompletion模型的序列化器
 
@@ -74,3 +93,5 @@ class ActiveInstanceSerializer(serializers.ModelSerializer):
 #使用者提交答案的序列化器(/labs/<id>/submit/)
 class SubmissionSerializer(serializers.Serializer):
     answer = serializers.CharField(max_length=255)
+
+

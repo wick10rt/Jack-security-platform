@@ -10,6 +10,9 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+
+#TODO 寫好前端後守門員註解掉
+
 from pathlib import Path
 import environ
 import os
@@ -56,6 +59,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    #"core.middleware.HideAdminMiddleware",
 ]
 
 REST_FRAMEWORK = {
