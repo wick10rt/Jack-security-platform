@@ -25,7 +25,7 @@ nvim .env
 # .env
 
 #使用DJANGO自動產生
-#python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+#python -> from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())
 SECRET_KEY=your-secret-string
 
 #postgresql密碼
