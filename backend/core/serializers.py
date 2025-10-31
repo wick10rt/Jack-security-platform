@@ -67,6 +67,9 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 #使用者進度的序列化器(/api/progress/)
 class LabCompletionSerializer(serializers.ModelSerializer):
+    lab = serializers.StringRelatedField(read_only=True)
+    user = serializers.StringRelatedField(read_only=True)
+
     class Meta:
         model = LabCompletion
         fields=['id','status','user','lab']

@@ -52,6 +52,11 @@ c. **安裝依賴**:
 
 ```bash
 pip install -r requirements.txt
+
+cd frontend
+npm install
+npm run lint
+npm run format
 ```
 
 d. **資料庫遷移**:
@@ -72,6 +77,12 @@ f. **啟動伺服器**:
 python manage.py runserver
 ```
 
+g. **啟動 vue.js**:
+
+```bash
+npm run dev
+```
+
 透過 http://127.0.0.1:8000/ 進入
 
 ---
@@ -84,6 +95,18 @@ https://www.canva.com/design/DAG19OvwFdQ/OMonLDO6pZEA0hrzcX1bcw/view?utlId=h4679
 
 # 開發成果影片連結
 
-**1~3 周**:
+**1 周**:
 
-https://youtu.be/k9-yvXRnK0E
+https://youtu.be/6UBfEKyguUY
+
+**2 周**:
+
+https://youtu.be/D8hVQlWvPsI
+
+**3 周**:
+
+https://youtu.be/D8hVQlWvPsI
+
+**4 周**:
+
+https://youtu.be/1fMSB6qCsnA
