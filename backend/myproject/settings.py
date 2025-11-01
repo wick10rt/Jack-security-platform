@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "core.apps.CoreConfig",
+    "axes",
 ]
 
 MIDDLEWARE = [
@@ -57,6 +58,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "axes.middleware.AxesMiddleware",
     #TODO 寫好前端後守門員註解掉
     #"core.middleware.HideAdminMiddleware",
 ]
@@ -102,6 +104,12 @@ DATABASES = {
         "HOST": "localhost",
         "PORT": "25000",
     }
+}
+
+# Axes設定-防止暴力破解
+AUTHENTICATION_BACKENDS = {
+    'axes.backends.AxesBackend',
+    'django.contrib.auth.backends.ModelBackend',
 }
 
 
@@ -168,3 +176,13 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=180),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
 }
+
+# Axes設定
+AXES_FAILURE_LIMIT = 10
+AXES_COOLOFF_TIME = timedelta(minutes=30)
+AXES_WINDOW = timedelta(minutes=15)
+AXES_RESET_ON_SUCCESS = True
+AXES_USE_ADMIN_SITE = True
+AXES_ONLY_USER_FAILURES = True
+AXES_LOCK_OUT_BY_COMBINATION_USER_AND_IP = False
+AXES_LOCK_OUT_BY_IP_OR_USER = True

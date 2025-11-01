@@ -22,7 +22,7 @@ cd Jack-security-platform
 ```dotenv
 # .env
 
-# python -> "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+# python -> from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())
 SECRET_KEY='your-key'
 DATABASE_PASSWORD='your-password'
 ```
@@ -94,24 +94,24 @@ npm run dev
 ### 5. 進入系統
 
 - **前端使用者介面**: `http://localhost:5173/`
-- **後端 API (可選)**: `http://127.0.0.1:8000/`
+- **後端 API**: `http://127.0.0.1:8000/`
 
 ---
 
 # 開發成果影片連結
 
-**1 周**:
+**第 1 周**:
 
 https://youtu.be/6UBfEKyguUY
 
-**2 周**:
+**第 2 周**:
 
 https://youtu.be/D8hVQlWvPsI
 
-**3 周**:
+**第 3 周**:
 
 https://youtu.be/D8hVQlWvPsI
 
-**4 周**:
+**第 4 周**:
 
 https://youtu.be/1fMSB6qCsnA

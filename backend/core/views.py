@@ -3,6 +3,7 @@
 from django.shortcuts import render
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.utils.decorators import method_decorator
 from django.contrib.auth import authenticate
 from datetime import timedelta
 from django.db import transaction
@@ -15,6 +16,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from .models import Lab, User,LabCompletion,ActiveInstance, CommunitySolution
 from .serializers import (LabSerializer, LabDetailSerializer, UserRegisterSerializer,LabCompletionSerializer,ActiveInstanceSerializer,SubmissionSerializer, CommunitySolutionSerializer,MyTokenObtainPairSerializer,ReflectionSerializer)
 
+from axes.decorators import axes_dispatch
+from axes.handlers.proxy import AxesProxyHandler
 
 #B2-實驗內容服務
 # 定義實驗資料的view
@@ -64,17 +67,22 @@ class UserRegisterView(generics.CreateAPIView):
     permission_classes = [permissions.AllowAny]
 
 # EE-1 , EE-9 認證使用者與管理員登入並跳轉正確頁面
+@method_decorator(axes_dispatch, name='dispatch')
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
-
+    
     def post(self, request, *args, **kwargs):
         username = request.data.get("username")
         password = request.data.get("password")
 
-        user = authenticate(username=username, password=password)
+        user = authenticate(request=request, username=username, password=password)
 
         #帳號或密碼錯誤
         if user is None:
+            
+            #紀錄失敗紀錄
+            AxesProxyHandler.user_login_failed(request=request, sender=self.__class__, credentials={'username': username})
+
             return Response({"detail": "username or password is wrong"}, status=status.HTTP_401_UNAUTHORIZED)
 
         response = super().post(request, *args, **kwargs)

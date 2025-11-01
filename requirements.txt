@@ -2,6 +2,7 @@ anyio==4.11.0
 asgiref==3.10.0
 certifi==2025.10.5
 Django==5.2.7
+django-axes==8.0.0
 django-environ==0.12.0
 django-pwned-passwords==4.1.0
 djangorestframework==3.16.1
