@@ -110,7 +110,7 @@ https://youtu.be/D8hVQlWvPsI
 
 **第 3 周**:
 
-https://youtu.be/D8hVQlWvPsI
+https://youtu.be/BnvHT9BLQB0
 
 **第 4 周**:
 
