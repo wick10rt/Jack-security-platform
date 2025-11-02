@@ -55,13 +55,14 @@ MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
-    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware", 
+    "axes.middleware.AxesMiddleware",                       
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "axes.middleware.AxesMiddleware",
-    #TODO 寫好前端後守門員註解掉
-    #"core.middleware.HideAdminMiddleware",
+    # TODO 寫好前端後守門員註解掉
+    # "core.middleware.HideAdminMiddleware",
 ]
+
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES':(
@@ -184,3 +185,4 @@ AXES_WINDOW = timedelta(minutes=15)
 AXES_RESET_ON_SUCCESS = True
 AXES_USE_ADMIN_SITE = True
 AXES_LOCKOUT_PARAMETERS = ['username']
+
