@@ -9,11 +9,14 @@ interface UserInfo {
 }
 
 export const useAuthStore = defineStore('auth', () => {
+  // 取出認證資訊
   const accessToken = ref<string | null>(localStorage.getItem('accessToken'))
   const username = ref<string | null>(localStorage.getItem('username'))
   const isAdmin = ref<boolean>(localStorage.getItem('isAdmin') === 'true')
+
   const isAuthenticated = computed(() => !!accessToken.value)
 
+  // 解析token, 儲存使用者資訊
   function setAuthInfo(token: string) {
     accessToken.value = token
 
@@ -28,6 +31,7 @@ export const useAuthStore = defineStore('auth', () => {
     axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
   }
 
+  // 清楚使用者資訊
   function clearAuthInfo() {
     accessToken.value = null
     username.value = null
@@ -40,29 +44,32 @@ export const useAuthStore = defineStore('auth', () => {
     delete axios.defaults.headers.common['Authorization']
   }
 
-  async function login(user: string, pass:string): Promise<string> {
-    try{
-      const response = await axios.post<{access: string; redirect_url: string}>('/auth/login/', {
+  // 處理 EE-1 使用者登入
+  async function login(user: string, pass: string): Promise<string> {
+    try {
+      const response = await axios.post<{ access: string; redirect_url: string }>('/auth/login/', {
         username: user,
         password: pass,
       })
-      
-      const {access, redirect_url} = response.data
+
+      const { access, redirect_url } = response.data
       setAuthInfo(access)
       return redirect_url
-    }
-    catch (error) {
+    } catch (error) {
       clearAuthInfo()
       throw error
     }
   }
-  async function register(user: string, pass:string): Promise<void> {
+
+  // 處理 EE-0 使用者註冊
+  async function register(user: string, pass: string): Promise<void> {
     await axios.post('/auth/register/', {
       username: user,
       password: pass,
     })
   }
 
+  // 處理使用者登出
   function logout() {
     clearAuthInfo()
   }

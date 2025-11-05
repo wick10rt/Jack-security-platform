@@ -5,6 +5,13 @@ class HideAdminMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        if request.path.startswith('/admin/') and not (request.user.is_authenticated and request.user.is_superuser):
-            return HttpResponseNotFound('<h1>You cant access this page</h1>')
+        path = request.path
+        referer = request.META.get('HTTP_REFERER', '')
+
+        if path.startswith('/admin/') and not path.startswith('/admin/login/'):
+            if not referer.startswith('http://localhost:5173'):
+                if not (request.user.is_authenticated and request.user.is_staff):
+                    return HttpResponseNotFound('<h1>you cant access this page</h1>')
         return self.get_response(request)
+
+

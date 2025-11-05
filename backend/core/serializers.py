@@ -32,7 +32,7 @@ class CommunitySolutionSerializer(serializers.ModelSerializer):
 #B1-登入驗證服務
 # 定義user模型的序列化器
 
-#使用者註冊的序列化器(/auth/register/)
+#使用者註冊的序列化器(/api/auth/register/)
 class UserRegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User

@@ -4,7 +4,7 @@ from django.shortcuts import render
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.decorators import method_decorator
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, login
 from datetime import timedelta
 from django.db import transaction
 
@@ -90,6 +90,7 @@ class MyTokenObtainPairView(TokenObtainPairView):
             
             # 根據使用者決定重導向的URL
             if user.is_staff:
+                login(request, user)
                 response.data["redirect_url"] = "/admin/"
             else:
                 response.data["redirect_url"] = "/dashboard"
