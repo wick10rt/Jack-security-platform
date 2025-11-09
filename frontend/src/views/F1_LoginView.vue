@@ -54,7 +54,7 @@
 </template>
 
 <script setup lang="ts">
-import { useAuthForm } from '@/composables/F1_userAuthForm'
+import { useAuthForm } from '@/composables/B1_userAuthForm'
 const {
   isRegisterMode,
   toggleMode,

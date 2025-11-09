@@ -1,5 +1,7 @@
 # Jack Security Platform
 
+**設計簡報**:
+
 https://www.canva.com/design/DAG19OvwFdQ/OMonLDO6pZEA0hrzcX1bcw/view?utm_content=DAG19OvwFdQ&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h4679177af0
 
 ---
@@ -19,7 +21,7 @@ git clone https://github.com/wick10rt/Jack-security-platform.git
 cd Jack-security-platform
 ```
 
-### 2. 配置環境變數
+### 2. 配置環境變數(.env)
 
 ```dotenv
 # .env
