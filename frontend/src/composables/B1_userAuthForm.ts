@@ -7,6 +7,7 @@ export function useAuthForm() {
   const authStore = useAuthStore()
   const router = useRouter()
 
+  // 登入註冊切換
   const isRegisterMode = ref(false)
   const toggleMode = () => {
     isRegisterMode.value = !isRegisterMode.value
