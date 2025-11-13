@@ -21,7 +21,7 @@ export function useAuthForm() {
     registerForm.password = ''
   }
 
-  // 處理 EE-0 註冊表單
+  // IE-0 處理註冊表單
   const registerForm = reactive({ username: '', password: '' })
   const registerErrors = reactive<{
     username?: string[]
@@ -46,7 +46,7 @@ export function useAuthForm() {
     }
   }
 
-  // 處理 EE-1 登入表單
+  // IE-1 處理登入表單
   const loginForm = reactive({ username: '', password: '' })
   const loginError = ref<string | null>(null)
 

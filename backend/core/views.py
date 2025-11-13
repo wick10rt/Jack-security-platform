@@ -153,6 +153,7 @@ class LaunchInstanceView(generics.GenericAPIView):
     serializer_class = ActiveInstanceSerializer
     permission_classes = [IsAuthenticated]
 
+    # 根據伺服器效能決定容器上限
     ACTIVEINSTANCE_LIMIT = 30
     
     def post(self, request, *args, **kwargs):
