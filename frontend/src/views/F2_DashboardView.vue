@@ -33,7 +33,7 @@
 
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
-import { useProgress } from '@/composables/B3_userProgress'
+import { useProgress } from '@/composables/useGetProgress_B3'
 
 const { completions, isLoading, error } = useProgress()
 </script>

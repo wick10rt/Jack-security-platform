@@ -2,7 +2,7 @@
 
 **設計簡報**:
 
-https://www.canva.com/design/DAG19OvwFdQ/OMonLDO6pZEA0hrzcX1bcw/view?utm_content=DAG19OvwFdQ&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h4679177af0
+[Context: https://www.canva.com/design/DAG19OvwFdQ/OMonLDO6pZEA0hrzcX1bcw/view?utm_content=DAG19OvwFdQ&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h4679177af0]
 
 ---
 
@@ -102,20 +102,20 @@ npm run dev
 
 ---
 
-# 開發成果影片連結
+### 開發成果影片連結
 
 **第 1 周**:
 
-https://youtu.be/6UBfEKyguUY
+[Context: https://youtu.be/6UBfEKyguUY]
 
 **第 2 周**:
 
-https://youtu.be/D8hVQlWvPsI
+[Context: https://youtu.be/D8hVQlWvPsI]
 
 **第 3 周**:
 
-https://youtu.be/BnvHT9BLQB0
+[Context: https://youtu.be/BnvHT9BLQB0]
 
 **第 4 周**:
 
-https://youtu.be/1fMSB6qCsnA
+[Context: https://youtu.be/1fMSB6qCsnA]

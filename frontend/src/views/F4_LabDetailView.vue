@@ -19,13 +19,31 @@
         <div v-html="lab.description"></div>
       </section>
 
-      <!-- TODO 靶機放這裡 -->
       <section class="actions">
         <button>啟動靶機</button>
-        <form>
-          <input type="text" placeholder="在這邊提交答案" />
-          <button type="submit">提交</button>
+
+        <form @submit.prevent="submitAnswer" class="submission-form">
+          <input
+            v-model="answer"
+            type="text"
+            placeholder="在這邊提交答案"
+            :disabled="isSubmitting"
+            required
+          />
+          <button type="submit" :disabled="isSubmitting">
+            {{ isSubmitting ? '提交中...' : '提交' }}
+          </button>
         </form>
+
+        <div v-if="submissionError" class="error-message">
+          {{ submissionError }}
+        </div>
+        <div v-if="submissionStatus === 'pending_reflection'" class="success-message">
+          回答正確! 請完成防禦省思
+        </div>
+        <div v-if="submissionStatus === 'already_completed'" class="info-message">
+          恭喜你完成了這個實驗
+        </div>
       </section>
     </article>
   </div>
@@ -35,9 +53,11 @@
 import { toRef, type Ref } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { LabDetail } from '@/composables/useGetDetail_B2'
+import { useSubmit } from '@/composables/useSubmit_B5'
 
 const route = useRoute()
 const labId = toRef(route.params, 'id') as Ref<string>
-
 const { lab, isLoading, error } = LabDetail(labId)
+
+const { answer, isSubmitting, submissionError, submissionStatus, submitAnswer } = useSubmit(labId)
 </script>
