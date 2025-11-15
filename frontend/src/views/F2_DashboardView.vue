@@ -22,11 +22,9 @@
     </div>
 
     <div v-else>
-      <p>
-        這裡空空如也!!!
-      </p>
+      <p>這裡空空如也!!!</p>
     </div>
-    
+
     <RouterLink to="/labs">
       <button>進入 Lab 目錄</button>
     </RouterLink>
@@ -37,6 +35,5 @@
 import { RouterLink } from 'vue-router'
 import { useProgress } from '@/composables/B3_userProgress'
 
-const { completions, isLoading, error, fetchProgress } = useProgress()
+const { completions, isLoading, error } = useProgress()
 </script>
-

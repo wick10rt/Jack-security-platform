@@ -15,7 +15,19 @@ const router = createRouter({
       path: '/dashboard',
       name: 'dashboard',
       component: () => import('../views/F2_DashboardView.vue'),
-      meta: {requiresAuth: true},
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/labs',
+      name: 'labs',
+      component: () => import('../views/F3_LabsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/labs/:id',
+      name: 'lab-detail',
+      component: () => import('../views/F4_LabDetailView.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/',
