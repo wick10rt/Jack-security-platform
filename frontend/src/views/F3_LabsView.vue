@@ -23,7 +23,7 @@
 
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
-import { getLabList } from '@/composables/B2_getLabs'
+import { getLabList } from '@/composables/useGetLabs_B2'
 
 const { labs, isLoading, error } = getLabList()
 </script>
