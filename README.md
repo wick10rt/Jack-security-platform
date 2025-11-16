@@ -2,14 +2,14 @@
 
 **設計簡報**:
 
-[Context: https://www.canva.com/design/DAG19OvwFdQ/OMonLDO6pZEA0hrzcX1bcw/view?utm_content=DAG19OvwFdQ&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h4679177af0]
+<https://www.canva.com/design/DAG19OvwFdQ/OMonLDO6pZEA0hrzcX1bcw/view?utm_content=DAG19OvwFdQ&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h4679177af0>
 
 ---
 
 ## 系統需求
 
-- **Python** ≥ 3.10
-- **Node.js** ≥ 18.0
+- **Python**
+- **Node.js**
 - **Docker & Docker Compose**
 
 ---
@@ -86,7 +86,6 @@ b. **檢查程式碼**:
 
 ```bash
 npm run lint
-npm run format
 ```
 
 c. **啟動 Vue.js 開發伺服器**:
@@ -106,16 +105,24 @@ npm run dev
 
 **第 1 周**:
 
-[Context: https://youtu.be/6UBfEKyguUY]
+<https://youtu.be/6UBfEKyguUY>
 
 **第 2 周**:
 
-[Context: https://youtu.be/D8hVQlWvPsI]
+<https://youtu.be/D8hVQlWvPsI>
 
 **第 3 周**:
 
-[Context: https://youtu.be/BnvHT9BLQB0]
+<https://youtu.be/BnvHT9BLQB0>
 
 **第 4 周**:
 
-[Context: https://youtu.be/1fMSB6qCsnA]
+<https://youtu.be/1fMSB6qCsnA>
+
+**第 5 周:**
+
+<https://youtu.be/OzDE_BdZOjo>
+
+**第 6,7 周:**
+
+<https://youtu.be/ZFG1guBRovA>
