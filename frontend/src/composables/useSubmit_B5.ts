@@ -30,7 +30,11 @@ export function useSubmit(labId: Ref<string>) {
       submissionStatus.value = response.data.status
     } catch (err) {
       if (axios.isAxiosError<ErrorResponse>(err) && err.response) {
-        submissionError.value = err.response.data.error || '發生錯誤,請重試'
+        if (err.response.status === 400) {
+          submissionError.value = '答案錯誤'
+        } else {
+          submissionError.value = err.response.data.error
+        }
       } else {
         submissionError.value = '發生錯誤,請重試'
       }
