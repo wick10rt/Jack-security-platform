@@ -52,14 +52,7 @@
         v-if="submissionStatus === 'pending_reflection' || submissionStatus === 'already_completed'"
         class="reflection-section"
       >
-        <h2
-          v-if="submissionStatus === 'pending_reflection' && !submissionSuccess"
-          class="success-message"
-        >
-          答案正確！請完成防禦表單
-        </h2>
-
-        <h2 v-else>你的防禦表單</h2>
+        <h2>你的防禦表單</h2>
         <div v-if="isReflectionLoading">正在獲取表單內容</div>
 
         <form @submit.prevent="submitReflection" v-else>
@@ -69,7 +62,7 @@
               id="payload"
               v-model="reflectionForm.payload"
               type="text"
-              placeholder="請在這邊填入你的 Payload"
+              placeholder="填入你使用的 Payload"
               :disabled="isReflectionSubmitting"
               required
             />
@@ -94,12 +87,42 @@
         </form>
       </section>
 
-      <div
-        v-if="submissionSuccess || submissionStatus === 'already_completed'"
-        class="completed-message"
-      >
-        恭喜你！ 你已經完成了這個實驗 想要修改防禦表單內容只需在填一次表單即可
-      </div>
+      <!-- SE-10 實驗完成狀態 -->
+      <section v-if="submissionSuccess || submissionStatus === 'already_completed'" class="completed-section">
+        <div class="completed-message">
+          恭喜！你已成功完成了這個實驗！
+        </div>
+        <div class="completed-message">
+          想要修改防禦表單內容，只需再填一次表單即可
+        </div>
+
+        <!-- 查看他人解法 EE-8 -->
+        <div class="solutions-section">
+          <button @click="toggleSolutions" class="solutions-toggle-btn">
+            {{ showSolutions ? '隱藏他人解法' : '查看他人解法' }}
+          </button>
+          
+          <div v-if="showSolutions" class="solutions-content">
+            <h3>其他人怎麼做的</h3>
+            <div v-if="solutionsLoading">尋找數據中...</div>
+            <div v-if="solutionsError" class="error-message">{{ solutionsError }}</div>
+            
+            <ul v-if="solutions.length > 0">
+              <li v-for="(solution, index) in solutions" :key="index">
+                <h4>匿名使用者 #{{ index + 1 }}</h4>
+                <p><strong>Payload:</strong></p>
+                <pre><code>{{ solution.payload }}</code></pre>
+                <p><strong>防禦省思:</strong></p>
+                <p>{{ solution.reflection }}</p>
+              </li>
+            </ul>
+            <p v-else-if="!solutionsLoading && !solutionsError">
+              這邊空空如也!!!
+            </p>
+          </div>
+        </div>
+
+      </section>
     </article>
   </div>
 </template>
@@ -110,6 +133,7 @@ import { useRoute, RouterLink } from 'vue-router'
 import { LabDetail } from '@/composables/useGetDetail_B2'
 import { useSubmit } from '@/composables/useSubmit_B5'
 import { useReflection } from '@/composables/useReflection_B3'
+import { useSolutions } from '@/composables/usesolutions_B2'
 
 // IE-4 實驗詳情
 const route = useRoute()
@@ -132,17 +156,15 @@ const {
   submissionError: reflectionError,
   submissionSuccess,
   isLoading: isReflectionLoading,
-  fetchMySolution,
   submitReflection,
 } = useReflection(labId)
 
-watch(
-  submissionStatus,
-  (newStatus) => {
-    if (newStatus === 'already_completed') {
-      fetchMySolution()
-    }
-  },
-  { immediate: true },
-)
+// IE-8 解法清單
+const {
+  solutions,
+  showSolutions,
+  isLoading: solutionsLoading,
+  error: solutionsError,
+  toggleSolutions,
+}=useSolutions(labId)
 </script>

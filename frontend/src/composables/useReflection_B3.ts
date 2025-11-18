@@ -15,25 +15,11 @@ export function useReflection(labId: Ref<string>) {
     reflection: '',
     payload: '',
   })
+
   const isSubmitting = ref(false)
   const submissionError = ref<string | null>(null)
   const submissionSuccess = ref(false)
   const isLoading = ref(false)
-
-  const fetchMySolution = async () => {
-    isLoading.value = true
-    try {
-      const response = await axios.get(`/labs/${labId.value}/solutions/`)
-      if (response.data) {
-        reflectionForm.payload = response.data.payload
-        reflectionForm.reflection = response.data.reflection
-      }
-    } catch (err) {
-      console.error('取得資料失敗', err)
-    } finally {
-      isLoading.value = false
-    }
-  }
 
   // EE-7 使用者提交表單
   const submitReflection = async () => {
@@ -66,7 +52,6 @@ export function useReflection(labId: Ref<string>) {
     submissionError,
     submissionSuccess,
     isLoading,
-    fetchMySolution,
     submitReflection,
   }
 }
