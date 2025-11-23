@@ -126,3 +126,7 @@ npm run dev
 **第 6,7 周:**
 
 <https://youtu.be/ZFG1guBRovA>
+
+**第 8 周:**
+
+<https://youtu.be/kf87MPGtzp0>
