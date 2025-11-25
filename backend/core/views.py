@@ -1,4 +1,7 @@
 # core/views.py
+import uuid
+import os
+import subprocess
 
 from django.shortcuts import render
 from django.shortcuts import get_object_or_404
@@ -7,6 +10,7 @@ from django.utils.decorators import method_decorator
 from django.contrib.auth import authenticate, login
 from datetime import timedelta
 from django.db import transaction
+from django.conf import settings
 
 from rest_framework import generics, permissions,status
 from rest_framework.permissions import IsAuthenticated
@@ -178,19 +182,107 @@ class LaunchInstanceView(generics.GenericAPIView):
                 status = status.HTTP_409_CONFLICT
             )
 
-        #TODO 測試用 後期換成真實D2,D1
-        test_instance_url = f"http://test/{user.username}/{lab.id}.com"
-        test_container_id = "test_container_12345"
 
         #在D3-資料庫服務中建立紀錄
         expires_at = timezone.now() + timedelta(minutes=30)
         instance = ActiveInstance.objects.create(
             user = user,
             lab = lab,
-            instance_url = test_instance_url,
-            container_id = test_container_id,
+            instance_url = "waiting...",
+            container_id = "waiting...",
             expires_at = expires_at
         )
+
+
+        # D2-容器管理服務 生成 docker-compose.yml
+        instance_id = instance.id
+        compose_dir = settings.BASE_DIR /'instances'
+        compose_dir.mkdir(exist_ok=True)
+        compose_file_path = compose_dir / f"docker-compose-{instance_id}.yml"
+        compose_content = f"""
+services:
+  web:
+    image: {lab.docker_image} 
+    ports:
+      - "80"
+    depends_on:
+      - db
+    environment:
+      - DB_HOST=db
+      - DB_USER=root
+      - DB_PASSWORD=root
+      - DB_NAME=security
+  db:
+    image: mysql:5.7
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: security
+"""        
+        with open(compose_file_path, 'w') as f:
+            f.write(compose_content)
+
+
+        # D2-容器管理服務 使用 docker-compose 啟動容器
+        try:
+            subprocess.run(
+                ["docker-compose", "-f", str(compose_file_path), "up", "-d"],
+                check=True, capture_output=True, text=True
+            )
+        except subprocess.CalledProcessError as e:
+            os.remove(compose_file_path)
+            instance.delete()
+            return Response(
+                {"error": "Launch instance failed, please try again or contact admin william"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+
+        # 獲取 D2-容器管理服務 產生的容器端口
+        try:
+            result = subprocess.run(
+                ['docker-compose', '-f', str(compose_file_path), 'port', 'web', '80'],
+                check=True, capture_output=True, text=True
+            )
+            host_port = result.stdout.strip().split(':')[-1]
+            instance_url = f"http://127.0.0.1:{host_port}"
+        except (subprocess.CalledProcessError, IndexError) as e:
+            subprocess.run(
+                ["docker-compose", "-f", str(compose_file_path), "down", "-v"],
+                check=True
+            )
+            os.remove(compose_file_path)
+            instance.delete()
+            return Response(
+                {"error": "Failed to get instance details, please try again or contact admin william"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+
+        # 獲取 D2-容器管理服務 產生的容器 ID
+        try:
+            result = subprocess.run(
+                ['docker-compose', '-f', str(compose_file_path), 'ps', '-q', 'web'],
+                check=True, capture_output=True, text=True
+            )
+            container_id = result.stdout.strip()
+        except subprocess.CalledProcessError as e:
+            subprocess.run(
+                ["docker-compose", "-f", str(compose_file_path), "down", "-v"],
+                check=True
+            )
+            os.remove(compose_file_path)
+            instance.delete()
+            return Response(
+                {"error": "Failed to get instance details, please try again or contact admin william"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+
+        # 更新 D3-資料庫服務中的紀錄
+        instance.instance_url = instance_url
+        instance.container_id = container_id
+        instance.save()
+        
 
         serializer = self.get_serializer(instance)
         return Response(serializer.data, status=status.HTTP_201_CREATED)

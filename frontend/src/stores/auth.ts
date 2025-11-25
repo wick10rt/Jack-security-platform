@@ -31,7 +31,7 @@ export const useAuthStore = defineStore('auth', () => {
     axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
   }
 
-  // 清楚使用者資訊
+  // 清除使用者資訊
   function clearAuthInfo() {
     accessToken.value = null
     username.value = null
@@ -63,10 +63,19 @@ export const useAuthStore = defineStore('auth', () => {
 
   // 處理 EE-0 使用者註冊
   async function register(user: string, pass: string): Promise<void> {
-    await axios.post('/auth/register/', {
-      username: user,
-      password: pass,
-    })
+    const originalAuthHeader = axios.defaults.headers.common['Authorization']
+    delete axios.defaults.headers.common['Authorization']
+
+    try {
+      await axios.post('/auth/register/', {
+        username: user,
+        password: pass,
+      })
+    } finally {
+      if (originalAuthHeader) {
+        axios.defaults.headers.common['Authorization'] = originalAuthHeader
+      }
+    }
   }
 
   // 處理使用者登出
