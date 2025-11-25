@@ -184,7 +184,7 @@ class LaunchInstanceView(generics.GenericAPIView):
 
 
         #在D3-資料庫服務中建立紀錄
-        expires_at = timezone.now() + timedelta(minutes=30)
+        expires_at = timezone.now() + timedelta(minutes=1)
         instance = ActiveInstance.objects.create(
             user = user,
             lab = lab,
@@ -196,7 +196,7 @@ class LaunchInstanceView(generics.GenericAPIView):
 
         # D2-容器管理服務 生成 docker-compose.yml
         instance_id = instance.id
-        compose_dir = settings.BASE_DIR /'instances'
+        compose_dir = settings.BASE_DIR.parent /'instances'
         compose_dir.mkdir(exist_ok=True)
         compose_file_path = compose_dir / f"docker-compose-{instance_id}.yml"
         compose_content = f"""

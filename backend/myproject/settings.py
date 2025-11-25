@@ -14,6 +14,7 @@ from pathlib import Path
 import environ
 import os
 from datetime import timedelta
+from celery.schedules import crontab
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -103,7 +104,7 @@ DATABASES = {
         "NAME": "platform_db",
         "USER": "platform_user",
         "PASSWORD": env('DATABASE_PASSWORD'),
-        "HOST": "localhost",
+        "HOST": "127.0.0.1",
         "PORT": "25000",
     }
 }
@@ -191,3 +192,18 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
+
+# Celery設定
+CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
+CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'Asia/Taipei'
+
+CELERY_BEAT_SCHEDULE = {
+    'cleanup_instances_every_minute': {
+        'task': 'core.tasks.cleanup_expired_instances',
+        'schedule': crontab(),
+    },
+}
