@@ -32,4 +32,8 @@ media/
 .DS_Store
 Thumbs.db
 
+# Celery Beat schedule files
+backend/celerybeat-schedule*
+
+#忽略靶機檔案
 instances/
