@@ -1,12 +1,10 @@
 # Jack Security Platform
 
-**設計簡報**:
-
-<https://www.canva.com/design/DAG19OvwFdQ/OMonLDO6pZEA0hrzcX1bcw/view?utm_content=DAG19OvwFdQ&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h4679177af0>
+**Design Presentation**: [View on Canva](https://www.canva.com/design/DAG19OvwFdQ/OMonLDO6pZEA0hrzcX1bcw/view?utm_content=DAG19OvwFdQ&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h4679177af0)
 
 ---
 
-## 系統需求
+## System Requirements
 
 - **Python**
 - **Node.js**
@@ -14,123 +12,134 @@
 
 ---
 
-### 1. 取得專案
+## Installation & Setup
+
+### 1. Clone Repository
 
 ```bash
 git clone https://github.com/wick10rt/Jack-security-platform.git
 cd Jack-security-platform
 ```
 
-### 2. 配置環境變數(.env)
+### 2. Configure Environment Variables
+
+Create a `.env` file in the root directory and configure the following:
 
 ```dotenv
 # .env
 
-# python -> from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())
+# Generate a secret key using Python:
+# from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())
+
 SECRET_KEY='your-key'
 DATABASE_PASSWORD='your-password'
 ```
 
-### 3. 啟動後端與資料庫
+Create a `.env` under `frontend/` and configure the following:
 
-a. **啟動 PostgreSQL 資料庫**:
+```dotenv
+# frontend/.env
+
+# Must match backend/core/middleware.py → ALLOWED_QUERY_VALUE
+
+VITE_ADMIN_ACCESS_KEY='your-admin-access-key'
+```
+
+### 3. Backend Setup
+
+**a. Start PostgreSQL Database**
 
 ```bash
 docker-compose up -d
 ```
 
-b. **啟用虛擬環境**:
+**b. Activate Virtual Environment**
 
 ```bash
 cd backend
+
+# Linux / macOS
 python -m venv venv
 source venv/bin/activate
-#or
+
+# Windows
+python -m venv venv
 .\venv\Scripts\activate
 ```
 
-c. **安裝後端依賴**:
+**c. Install Dependencies**
 
 ```bash
 pip install -r requirements.txt
 ```
 
-d. **執行資料庫遷移**:
+**d. Database Initialization**
 
 ```bash
+# Run migrations
 python manage.py migrate
-```
 
-e. **建立管理員帳號**:
-
-```bash
+# Create admin user
 python manage.py createsuperuser
 ```
 
-f. **啟動 Django 開發伺服器**:
+**e. Start Django Development Server**
 
 ```bash
 python manage.py runserver
 ```
 
-### 4. 啟動前端
+**f. Start Celery**
 
-a. **進入前端專案目錄並安裝依賴**:
+Run the following in separate terminals:
+
+```bash
+# Worker (Multi-process)
+celery -A myproject worker -l info
+
+# Worker (Windows/Solo mode)
+celery -A myproject worker -l info -P solo
+
+# Beat (Scheduler)
+celery -A myproject beat -l info
+```
+
+### 4. Frontend Setup
+
+**a. Install Dependencies**
 
 ```bash
 cd frontend
 npm install
 ```
 
-b. **檢查程式碼**:
+**b. Lint and Start Server**
 
 ```bash
-npm run lint
-```
-
-c. **啟動 Vue.js 開發伺服器**:
-
-```bash
+# Start Vue.js server
 npm run dev
 ```
 
-### 5. 進入系統
+---
 
-- **前端使用者介面**: `http://localhost:5173/`
-- **後端 API**: `http://127.0.0.1:8000/`
+## Access
+
+| Service         | URL                    |
+| :-------------- | :--------------------- |
+| **Frontend UI** | http://localhost:5173/ |
+| **Backend API** | http://127.0.0.1:8000/ |
 
 ---
 
-### 開發成果影片連結
+## Development Log
 
-**第 1 周**:
-
-<https://youtu.be/6UBfEKyguUY>
-
-**第 2 周**:
-
-<https://youtu.be/D8hVQlWvPsI>
-
-**第 3 周**:
-
-<https://youtu.be/BnvHT9BLQB0>
-
-**第 4 周**:
-
-<https://youtu.be/1fMSB6qCsnA>
-
-**第 5 周:**
-
-<https://youtu.be/OzDE_BdZOjo>
-
-**第 6,7 周:**
-
-<https://youtu.be/ZFG1guBRovA>
-
-**第 8,9 周:**
-
-<https://youtu.be/kf87MPGtzp0>
-
-**第 10 周:**
-
-<https://youtu.be/-eIVovvtz4o>
+| Week         | Video Link                                  |
+| :----------- | :------------------------------------------ |
+| **Week 1**   | [Watch Video](https://youtu.be/6UBfEKyguUY) |
+| **Week 2**   | [Watch Video](https://youtu.be/D8hVQlWvPsI) |
+| **Week 3**   | [Watch Video](https://youtu.be/BnvHT9BLQB0) |
+| **Week 4**   | [Watch Video](https://youtu.be/1fMSB6qCsnA) |
+| **Week 5**   | [Watch Video](https://youtu.be/OzDE_BdZOjo) |
+| **Week 6-7** | [Watch Video](https://youtu.be/ZFG1guBRovA) |
+| **Week 8-9** | [Watch Video](https://youtu.be/kf87MPGtzp0) |
+| **Week 10**  | [Watch Video](https://youtu.be/-eIVovvtz4o) |
