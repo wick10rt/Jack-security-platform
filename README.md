@@ -131,7 +131,7 @@ npm run dev
 
 ---
 
-## Development Log
+## Videos
 
 | Week         | Video Link                                  |
 | :----------- | :------------------------------------------ |

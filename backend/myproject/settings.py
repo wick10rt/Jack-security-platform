@@ -32,6 +32,7 @@ environ.Env.read_env(os.path.join(BASE_DIR.parent, '.env'))
 SECRET_KEY = env('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
+#TODO 測試改的 要改回 False
 DEBUG = True
 
 ALLOWED_HOSTS = []

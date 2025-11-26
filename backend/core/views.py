@@ -16,6 +16,7 @@ from rest_framework import generics, permissions,status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework.serializers import ValidationError
 
 from .models import Lab, User,LabCompletion,ActiveInstance, CommunitySolution
 from .serializers import (LabSerializer, LabDetailSerializer, UserRegisterSerializer,LabCompletionSerializer,ActiveInstanceSerializer,SubmissionSerializer, CommunitySolutionSerializer,MyTokenObtainPairSerializer,ReflectionSerializer)
@@ -133,9 +134,9 @@ class ReflectionView(generics.GenericAPIView):
             try:
                 completion = LabCompletion.objects.get(user=user, lab=lab)
                 if completion.status not in ['pending_reflection', 'completed']:
-                     raise serializers.ValidationError("error please try again")
+                     raise ValidationError("error please try again")
             except LabCompletion.DoesNotExist:
-                raise serializers.ValidationError("you have to submit the correct answer before reflection.")
+                raise ValidationError("you have to submit the correct answer before reflection.")
 
             instance, created = CommunitySolution.objects.update_or_create(
                 user=user,
@@ -167,31 +168,35 @@ class LaunchInstanceView(generics.GenericAPIView):
         user = request.user
 
         #檢查靶機是否超過系統限制
-        current_active_count = ActiveInstance.objects.count()
+        current_active_count = ActiveInstance.objects.filter(
+            expires_at__gt=timezone.now()
+        ).count()
         if current_active_count >= self.ACTIVEINSTANCE_LIMIT:
             return Response(
                 {"error": "instance launch failed please try again later if still not work contact admin william -> s1121717@mail.yzu.edu.tw"},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
-        
 
-        #檢查有沒有正在運行的靶機
-        if ActiveInstance.objects.filter(user=user).exists():
-            return Response(
-                {"error": "you already have an active instance"},
-                status = status.HTTP_409_CONFLICT
+        with transaction.atomic():
+            has_active = ActiveInstance.objects.select_for_update().filter(
+                user=user,
+                expires_at__gt=timezone.now()
+            ).exists()
+            if has_active:
+                return Response(
+                    {"error": "you already have an active instance"},
+                    status=status.HTTP_409_CONFLICT
+                )
+
+            #TODO 測試改的 3 min 要改回30 min
+            expires_at = timezone.now() + timedelta(minutes=3)
+            instance = ActiveInstance.objects.create(
+                user=user,
+                lab=lab,
+                instance_url="waiting...",
+                container_id="waiting...",
+                expires_at=expires_at
             )
-
-
-        #在D3-資料庫服務中建立紀錄
-        expires_at = timezone.now() + timedelta(minutes=1)
-        instance = ActiveInstance.objects.create(
-            user = user,
-            lab = lab,
-            instance_url = "waiting...",
-            container_id = "waiting...",
-            expires_at = expires_at
-        )
 
 
         # D2-容器管理服務 生成 docker-compose.yml
@@ -199,12 +204,13 @@ class LaunchInstanceView(generics.GenericAPIView):
         compose_dir = settings.BASE_DIR.parent /'instances'
         compose_dir.mkdir(exist_ok=True)
         compose_file_path = compose_dir / f"docker-compose-{instance_id}.yml"
+        project_name = f"instance_{instance_id}"
         compose_content = f"""
 services:
   web:
     image: {lab.docker_image} 
     ports:
-      - "80"
+      - "0.0.0.0::80"
     depends_on:
       - db
     environment:
@@ -225,7 +231,7 @@ services:
         # D2-容器管理服務 使用 docker-compose 啟動容器
         try:
             subprocess.run(
-                ["docker-compose", "-f", str(compose_file_path), "up", "-d"],
+                ["docker-compose","-p", project_name, "-f", str(compose_file_path), "up", "-d"],
                 check=True, capture_output=True, text=True
             )
         except subprocess.CalledProcessError as e:
@@ -240,14 +246,14 @@ services:
         # 獲取 D2-容器管理服務 產生的容器端口
         try:
             result = subprocess.run(
-                ['docker-compose', '-f', str(compose_file_path), 'port', 'web', '80'],
+                ['docker-compose', "-p", project_name,'-f', str(compose_file_path), 'port', 'web', '80'],
                 check=True, capture_output=True, text=True
             )
             host_port = result.stdout.strip().split(':')[-1]
             instance_url = f"http://127.0.0.1:{host_port}"
         except (subprocess.CalledProcessError, IndexError) as e:
             subprocess.run(
-                ["docker-compose", "-f", str(compose_file_path), "down", "-v"],
+                ["docker-compose", "-p", project_name,"-f", str(compose_file_path), "down", "-v"],
                 check=True
             )
             os.remove(compose_file_path)
@@ -261,13 +267,26 @@ services:
         # 獲取 D2-容器管理服務 產生的容器 ID
         try:
             result = subprocess.run(
-                ['docker-compose', '-f', str(compose_file_path), 'ps', '-q', 'web'],
+                ['docker-compose', '-p', project_name, '-f', str(compose_file_path), 'ps', '-q', 'web'],
                 check=True, capture_output=True, text=True
             )
             container_id = result.stdout.strip()
+            if not container_id:
+                raise ValueError("container id not found")
         except subprocess.CalledProcessError as e:
             subprocess.run(
-                ["docker-compose", "-f", str(compose_file_path), "down", "-v"],
+                ["docker-compose", "-p", project_name,"-f", str(compose_file_path), "down", "-v"],
+                check=True
+            )
+            os.remove(compose_file_path)
+            instance.delete()
+            return Response(
+                {"error": "Failed to get instance details, please try again or contact admin william"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        except ValueError:
+            subprocess.run(
+                ["docker-compose", "-p", project_name,"-f", str(compose_file_path), "down", "-v"],
                 check=True
             )
             os.remove(compose_file_path)

@@ -24,6 +24,7 @@ def cleanup_expired_instances():
 
     for instance in list(expired_instances):
         instance_id_str = str(instance.id) 
+        project_name = f"instance_{instance_id_str}"
         logger.info(f"Found expired instance: {instance_id_str} for user {instance.user.username}")
 
         compose_dir = (settings.BASE_DIR.parent / 'instances').resolve()
@@ -33,13 +34,16 @@ def cleanup_expired_instances():
             if compose_file_path.exists():
                 logger.info(f"Running docker-compose down for {compose_file_path}")
                 subprocess.run(
-                    ['docker-compose', '-f', str(compose_file_path), 'down', '-v'],
+                    ['docker-compose', '-p', project_name,'-f', str(compose_file_path), 'down', '-v'],
                     check=True, capture_output=True, text=True
                 )
                 os.remove(compose_file_path)
             else:
                 logger.warning(f"Compose file not found for instance {instance_id_str}. Attempting direct container removal.")
-                subprocess.run(['docker', 'rm', '-f', instance.container_id], check=True, capture_output=True, text=True)
+                if instance.container_id not in ("", "waiting...", None):
+                    subprocess.run(['docker', 'rm', '-f', instance.container_id], check=True, capture_output=True, text=True)
+                else:
+                    logger.warning(f"Container id missing for instance {instance_id_str}, skipping docker rm.")
 
             instance.delete()
             logger.info(f"Successfully cleaned up instance: {instance_id_str}")

@@ -3,6 +3,8 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import axios from 'axios'
 
+const ADMIN_ACCESS_KEY = import.meta.env.VITE_ADMIN_ACCESS_KEY ?? ''
+
 export function useAuthForm() {
   const authStore = useAuthStore()
   const router = useRouter()
@@ -55,7 +57,11 @@ export function useAuthForm() {
     try {
       const redirectUrl = await authStore.login(loginForm.username, loginForm.password)
       if (redirectUrl === '/admin/') {
-        window.location.href = 'http://127.0.0.1:8000/admin/'
+        const adminUrl = new URL('http://127.0.0.1:8000/admin/')
+        if (ADMIN_ACCESS_KEY) {
+          adminUrl.searchParams.set('admin_key', ADMIN_ACCESS_KEY)
+        }
+        window.location.href = adminUrl.toString()
       } else {
         await router.push(redirectUrl)
       }
