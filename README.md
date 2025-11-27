@@ -30,7 +30,6 @@ Create a `.env` file in the root directory and configure the following:
 
 # Generate a secret key using Python:
 # from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())
-
 SECRET_KEY='your-key'
 DATABASE_PASSWORD='your-password'
 ```
@@ -41,8 +40,8 @@ Create a `.env` under `frontend/` and configure the following:
 # frontend/.env
 
 # Must match backend/core/middleware.py → ALLOWED_QUERY_VALUE
-
 VITE_ADMIN_ACCESS_KEY='your-admin-access-key'
+VITE_API_BASE_URL=http://127.0.0.1:8000/api
 ```
 
 ### 3. Backend Setup
