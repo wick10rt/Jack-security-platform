@@ -1,5 +1,3 @@
-#version: '3.8'
-
 # 啟動 D3–資料庫服務 (postgreSQL)
 
 services:

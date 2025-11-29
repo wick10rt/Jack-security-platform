@@ -21,16 +21,11 @@ from django.urls import include, path
 from core.views import UserRegisterView, MyTokenObtainPairView
 
 urlpatterns = [
-    
     path("admin/", admin.site.urls),
-    
-
-    #B1-登入驗證服務
-    #EE-0 註冊api
+    # EE-0 使用者註冊
     path("api/auth/register/", UserRegisterView.as_view(), name="register"),
-    #EE-1,EE-9 登入api
+    # EE-1,EE-9 使用者登入/管理員登入
     path("api/auth/login/", MyTokenObtainPairView.as_view(), name="token_obtain_pair"),
-
-
     path("api/", include("core.urls")),
 ]
+

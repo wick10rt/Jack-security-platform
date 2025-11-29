@@ -1,5 +1,6 @@
 import { ref, onMounted, toRefs } from 'vue' // <-- 引入 toRefs
-import axios from '@/axios'
+import myaxios from '@/axios'
+import axios from 'axios'
 import type { Ref } from 'vue'
 
 interface LabDetail {
@@ -20,7 +21,7 @@ export function LabDetail(labId: Ref<string>) {
     error.value = null
 
     try {
-      const response = await axios.get<LabDetail>(`/labs/${labId.value}/`)
+      const response = await myaxios.get<LabDetail>(`/labs/${labId.value}/`)
       lab.value = response.data
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 404) {

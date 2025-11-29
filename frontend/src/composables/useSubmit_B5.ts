@@ -1,6 +1,7 @@
 import { ref } from 'vue'
-import axios from '@/axios'
+import myaxios from '@/axios'
 import type { Ref } from 'vue'
+import axios from 'axios'
 
 interface SuccessResponse {
   status: 'pending_reflection' | 'already_completed'
@@ -24,11 +25,11 @@ export function useSubmit(labId: Ref<string>) {
     submissionStatus.value = null
 
     try {
-      const response = await axios.post<SuccessResponse>(`/labs/${labId.value}/submit/`, {
+      const response = await myaxios.post<SuccessResponse>(`/labs/${labId.value}/submit/`, {
         answer: answer.value,
       })
       submissionStatus.value = response.data.status
-    } catch (err) {
+    } catch (err: unknown) {
       if (axios.isAxiosError<ErrorResponse>(err) && err.response) {
         if (err.response.status === 400) {
           submissionError.value = '答案錯誤'

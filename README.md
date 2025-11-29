@@ -40,6 +40,7 @@ Create a `.env` under `frontend/` and configure the following:
 # frontend/.env
 
 # Must match backend/core/middleware.py → ALLOWED_QUERY_VALUE
+# Default value is @1121717dogdog1101737fatfat
 VITE_ADMIN_ACCESS_KEY='your-admin-access-key'
 VITE_API_BASE_URL=http://127.0.0.1:8000/api
 ```
@@ -78,7 +79,7 @@ pip install -r requirements.txt
 # Run migrations
 python manage.py migrate
 
-# Create admin user
+#Create admin user
 python manage.py createsuperuser
 ```
 
@@ -123,10 +124,10 @@ npm run dev
 
 ## Access
 
-| Service         | URL                    |
-| :-------------- | :--------------------- |
-| **Frontend UI** | http://localhost:5173/ |
-| **Backend API** | http://127.0.0.1:8000/ |
+| Service         | URL                      |
+| :-------------- | :----------------------- |
+| **Frontend UI** | <http://localhost:5173/> |
+| **Backend API** | <http://127.0.0.1:8000/> |
 
 ---
 

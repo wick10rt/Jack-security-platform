@@ -1,7 +1,7 @@
 import { ref, reactive } from 'vue'
-import axios from '@/axios'
+import myaxios from '@/axios'
 import type { Ref } from 'vue'
-
+import axios from 'axios'
 interface ReflectionResponse {
   id: string
   user: string
@@ -29,7 +29,7 @@ export function useReflection(labId: Ref<string>) {
 
     // IE-7 B3 處理防禦表單
     try {
-      await axios.post<ReflectionResponse>(`/labs/${labId.value}/reflection/`, {
+      await myaxios.post<ReflectionResponse>(`/labs/${labId.value}/reflection/`, {
         reflection: reflectionForm.reflection,
         payload: reflectionForm.payload,
       })

@@ -1,7 +1,8 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import axios from '@/axios'
+import myaxios from '@/axios'
+import axios from 'axios'
 
 const ADMIN_ACCESS_KEY = import.meta.env.VITE_ADMIN_ACCESS_KEY ?? ''
 
@@ -39,22 +40,22 @@ export function useAuthForm() {
       await authStore.register(registerForm.username, registerForm.password)
       alert('註冊成功')
       toggleMode()
-    } catch (error: any) {
-  const response = error?.response
-
-  if (response) {
-    if (response.status === 400) {
-      Object.assign(registerErrors, response.data)
-    } else {
-      registerErrors.non_field_errors = [
-        typeof response.data?.detail === 'string'
-          ? response.data.detail
-          : '發生未知錯誤，請重試',
-      ]
-    }
-  } else {
-    registerErrors.non_field_errors = ['網路異常，請稍後重試']
-  }
+    } catch (error) {
+      // --- 关键修改：现在 isAxiosError 可以被正确识别 ---
+      if (axios.isAxiosError(error) && error.response) {
+      // ------------------------------------------------
+        const data = error.response.data;
+        if (error.response.status === 400 && typeof data === 'object' && data !== null) {
+          Object.assign(registerErrors, data as Record<string, string[]>);
+        } else {
+          const detail = (data as Record<string, unknown>)?.['detail']
+          registerErrors.non_field_errors = [
+            typeof detail === 'string' ? detail : '发生未知错误，请重试',
+          ]
+        }
+      } else {
+        registerErrors.non_field_errors = ['网路异常，请稍后重试']
+      }
 }
   }
 

@@ -11,7 +11,7 @@ from django.contrib.auth import authenticate, login
 from datetime import timedelta
 from django.db import transaction
 from django.conf import settings
-
+from django.http import HttpResponseRedirect, HttpResponseForbidden
 from rest_framework import generics, permissions,status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -188,8 +188,8 @@ class LaunchInstanceView(generics.GenericAPIView):
                     status=status.HTTP_409_CONFLICT
                 )
 
-            #TODO 測試改的 3 min 要改回30 min
-            expires_at = timezone.now() + timedelta(minutes=3)
+            #TODO 測試改的 min 要改回30 min
+            expires_at = timezone.now() + timedelta(minutes=5)
             instance = ActiveInstance.objects.create(
                 user=user,
                 lab=lab,
@@ -302,10 +302,75 @@ services:
         instance.container_id = container_id
         instance.save()
         
-
+        proxy_url = f"http://127.0.0.1:8000/api/instances/{instance.id}/access/"
+        
         serializer = self.get_serializer(instance)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        response_data = serializer.data
+        response_data['proxy_url'] = proxy_url
+   
+        return Response(response_data, status=status.HTTP_201_CREATED)
 
+
+# B4 靶機分配服務
+# 處理訪問權限與重導向
+class AccessInstanceView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        instance_id = self.kwargs.get('id')
+        instance = get_object_or_404(ActiveInstance, id=instance_id)
+        
+        if instance.user != request.user:
+            return Response({"error": "Permission denied"}, status=status.HTTP_403_FORBIDDEN)
+        
+        return Response({"target_url": instance.instance_url}, status=status.HTTP_200_OK)
+    
+# B4 靶機分配服務
+# 手動關閉靶機
+class TerminateInstanceView(generics.GenericAPIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        user = request.user
+
+        instance = ActiveInstance.objects.filter(user=user).first()
+
+        if not instance:
+            return Response(
+                {"message": "No active instance found to terminate."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        instance_id = instance.id
+        project_name = f"instance_{instance_id}"
+        compose_dir = settings.BASE_DIR.parent / 'instances'
+        compose_file_path = compose_dir / f"docker-compose-{instance_id}.yml"
+
+        try:
+            if compose_file_path.exists():
+                subprocess.run(
+                    ['docker-compose', '-p', project_name, '-f', str(compose_file_path), 'down', '-v'],
+                    check=True, capture_output=True, text=True
+                )
+                os.remove(compose_file_path)
+            else:
+
+                subprocess.run(['docker', 'rm', '-f', instance.container_id], check=True)
+
+            instance.delete()
+
+            return Response(
+                {"message": f"Instance {instance_id} terminated successfully."},
+                status=status.HTTP_200_OK
+            )
+        except Exception as e:
+
+            instance.delete()
+            return Response(
+                {"error": "An error occurred during termination, but the record has been cleared."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 #B5-答案驗證服務
 #定義答案驗證的view

@@ -20,7 +20,22 @@
       </section>
 
       <section class="actions">
-        <button>啟動靶機</button>
+          <div v-if="!instanceUrl">
+          <button @click="launchInstance" :disabled="isLaunching">
+            {{ isLaunching ? '啟動中...' : '啟動靶機' }}
+          </button>
+        </div>
+        <div v-else class="instance-info">
+          <p class="instance-url">
+            靶機已啟動：
+          </p>
+          <button @click="accessInstance">進入靶機</button>
+          <button @click="terminateInstance" :disabled="isTerminating" class="terminate-btn">
+            {{ isTerminating ? '關閉中...' : '關閉靶機' }}
+          </button>
+        </div>
+        <p v-if="launchError" class="error-message">{{ launchError }}</p>
+        <hr />
 
         <!-- 提交答案 EE-6 -->
         <div
@@ -134,6 +149,7 @@ import { LabDetail } from '@/composables/useGetDetail_B2'
 import { useSubmit } from '@/composables/useSubmit_B5'
 import { useReflection } from '@/composables/useReflection_B3'
 import { useSolutions } from '@/composables/usesolutions_B2'
+import {useControllInstance} from '@/composables/useControlInstance_B4'
 
 // IE-4 實驗詳情
 const route = useRoute()
@@ -167,4 +183,15 @@ const {
   error: solutionsError,
   toggleSolutions,
 }=useSolutions(labId)
+
+// 啟動關閉靶機
+const { 
+  instanceUrl, 
+  isLaunching, 
+  launchError, 
+  isTerminating,
+  launchInstance,
+  terminateInstance,
+  accessInstance, 
+} = useControllInstance(labId)
 </script>
