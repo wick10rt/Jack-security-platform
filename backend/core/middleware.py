@@ -1,11 +1,13 @@
 from django.http import HttpResponseNotFound
 
 ALLOWED_QUERY_KEY = "admin_key"
-# 要與 frontend/.env → VITE_ADMIN_ACCESS_KEY 一樣
+# TODO 要跟frontend/.env → VITE_ADMIN_ACCESS_KEY 一樣
 ALLOWED_QUERY_VALUE = "@1121717dogdog1101737fatfat"
 SESSION_FLAG = "admin_key_verified"
 
 
+# C-2
+# 其他使用者不可以訪問管理員頁面
 class HideAdminMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
@@ -24,6 +26,7 @@ class HideAdminMiddleware:
                 request.session[SESSION_FLAG] = True
                 return self.get_response(request)
 
-            return HttpResponseNotFound("<h1>you cant access this page</h1>")
+            return HttpResponseNotFound("<h1>禁止進入!!!</h1>")
 
         return self.get_response(request)
+

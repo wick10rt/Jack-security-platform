@@ -19,20 +19,19 @@ from celery.schedules import crontab
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-#使用env環境
-env = environ.Env(
-    DEBUG=(bool, False)
-)
+# 使用env環境
+env = environ.Env(DEBUG=(bool, False))
 
-environ.Env.read_env(os.path.join(BASE_DIR.parent, '.env'))
+environ.Env.read_env(os.path.join(BASE_DIR.parent, ".env"))
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env('SECRET_KEY')
+SECRET_KEY = env("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-#TODO 測試改的 要改回 False
+
+# TODO 測試改的 要改回 False
 DEBUG = True
 
 ALLOWED_HOSTS = []
@@ -59,21 +58,18 @@ MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
-    "django.contrib.auth.middleware.AuthenticationMiddleware", 
-    "axes.middleware.AxesMiddleware",                       
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "axes.middleware.AxesMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "core.middleware.HideAdminMiddleware",
 ]
 
-
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES':(
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
-    'DEFAULT_PERMISSION_CLASSES':(
-        'rest_framework.permissions.IsAuthenticated',
-    ),
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
 }
 
 ROOT_URLCONF = "myproject.urls"
@@ -104,48 +100,47 @@ DATABASES = {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": "platform_db",
         "USER": "platform_user",
-        "PASSWORD": env('DATABASE_PASSWORD'),
+        "PASSWORD": env("DATABASE_PASSWORD"),
         "HOST": "127.0.0.1",
         "PORT": "25000",
     }
 }
 
-# Axes設定-防止暴力破解
+# Axes 設定
 AUTHENTICATION_BACKENDS = {
-    'axes.backends.AxesBackend',
-    'django.contrib.auth.backends.ModelBackend',
+    "axes.backends.AxesBackend",
+    "django.contrib.auth.backends.ModelBackend",
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
-#密碼驗證手段
+# 密碼驗證
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'pwned_passwords_django.validators.PwnedPasswordsValidator',
-        'OPTIONS': {
-            'error_message': 'your password is too common. please choose another one.',
-        }
+        "NAME": "pwned_passwords_django.validators.PwnedPasswordsValidator",
+        "OPTIONS": {
+            "error_message": "your password is too common. please choose another one.",
+        },
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-        'OPTIONS': {
-            'user_attributes': ('username', 'password'),
-            'max_similarity': 0.5  
-        }
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+        "OPTIONS": {
+            "user_attributes": ("username", "password"),
+            "max_similarity": 0.5,  # 與 username 相似度小於0.5
+        },
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-        'OPTIONS': {
-            'min_length': 12, # 密碼至少12個字元
-        }
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {
+            "min_length": 12,  # 密碼至少12個字元
+        },
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
 
@@ -172,22 +167,21 @@ STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# 使用自訂的User Model
-
-AUTH_USER_MODEL = 'core.User'
+# 使用自訂的 User Model
+AUTH_USER_MODEL = "core.User"
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=180),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
 }
 
-# Axes設定
+# Axes 設定
 AXES_FAILURE_LIMIT = 20
 AXES_COOLOFF_TIME = timedelta(minutes=30)
 AXES_WINDOW = timedelta(minutes=15)
 AXES_RESET_ON_SUCCESS = True
 AXES_USE_ADMIN_SITE = True
-AXES_LOCKOUT_PARAMETERS = ['username']
+AXES_LOCKOUT_PARAMETERS = ["username"]
 
 # CORS_ALLOW_ALL_ORIGINS = True
 
@@ -195,7 +189,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
-CORS_EXPOSE_HEADERS = ['Location']
+CORS_EXPOSE_HEADERS = ["Location"]
 
 CORS_ALLOW_METHODS = [
     "DELETE",
@@ -208,24 +202,26 @@ CORS_ALLOW_METHODS = [
 
 CORS_ALLOW_HEADERS = [
     "accept",
-    "authorization", 
+    "authorization",
     "content-type",
     "user-agent",
     "x-csrftoken",
     "x-requested-with",
 ]
 
-# Celery設定
-CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
-CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/0'
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = 'json'
-CELERY_TIMEZONE = 'Asia/Taipei'
+# Celery 設定
+CELERY_BROKER_URL = "redis://127.0.0.1:6379/0"
+CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379/0"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = "Asia/Taipei"
 
+# Celery 每分鐘自動執行一次清理任務
 CELERY_BEAT_SCHEDULE = {
-    'cleanup_instances_every_minute': {
-        'task': 'core.tasks.cleanup_expired_instances',
-        'schedule': crontab(),
+    "cleanup_instances_every_minute": {
+        "task": "core.tasks.cleanup_expired_instances",
+        "schedule": crontab(),
     },
 }
+

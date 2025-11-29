@@ -21,11 +21,12 @@ from django.urls import include, path
 from core.views import UserRegisterView, MyTokenObtainPairView
 
 urlpatterns = [
+    # EE-9 進入管理員頁面
     path("admin/", admin.site.urls),
     # EE-0 使用者註冊
     path("api/auth/register/", UserRegisterView.as_view(), name="register"),
-    # EE-1,EE-9 使用者登入/管理員登入
+    # EE-1 使用者登入
     path("api/auth/login/", MyTokenObtainPairView.as_view(), name="token_obtain_pair"),
+    # 需要 Token 認證的API
     path("api/", include("core.urls")),
 ]
-
