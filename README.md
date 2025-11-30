@@ -1,6 +1,6 @@
 # Jack Security Platform
 
-**Design Presentation**: [View on Canva](https://www.canva.com/design/DAG19OvwFdQ/OMonLDO6pZEA0hrzcX1bcw/view?utm_content=DAG19OvwFdQ&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h4679177af0)
+**設計簡報**: <https://www.canva.com/design/DAG19OvwFdQ/OMonLDO6pZEA0hrzcX1bcw/view?utm_content=DAG19OvwFdQ&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h4679177af0>
 
 ---
 
@@ -23,37 +23,37 @@ cd Jack-security-platform
 
 ### 2. Configure Environment Variables
 
-Create a `.env` file in the root directory and configure the following:
+在專案根目錄創建 `.env` 填入下面的內容:
 
 ```dotenv
 # .env
 
-# Generate a secret key using Python:
+# 用 Python 建立django密鑰:
 # from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())
 SECRET_KEY='your-key'
 DATABASE_PASSWORD='your-password'
 ```
 
-Create a `.env` under `frontend/` and configure the following:
+在 `frontend/` 創建 `.env` 填入下面的內容:
 
 ```dotenv
 # frontend/.env
 
-# Must match backend/core/middleware.py → ALLOWED_QUERY_VALUE
-# Default value is @1121717dogdog1101737fatfat
+# 要跟 backend/core/middleware.py → ALLOWED_QUERY_VALUE 的一樣
+# VITE_ADMIN_ACCESS_KEY 預設是 @1121717dogdog1101737fatfat
 VITE_ADMIN_ACCESS_KEY='your-admin-access-key'
 VITE_API_BASE_URL=http://127.0.0.1:8000/api
 ```
 
 ### 3. Backend Setup
 
-**a. Start PostgreSQL Database**
+**a. 啟動資料庫**
 
 ```bash
 docker-compose up -d
 ```
 
-**b. Activate Virtual Environment**
+**b. 虛擬環境**
 
 ```bash
 cd backend
@@ -67,56 +67,50 @@ python -m venv venv
 .\venv\Scripts\activate
 ```
 
-**c. Install Dependencies**
+**c. 安裝依賴**
 
 ```bash
 pip install -r requirements.txt
 ```
 
-**d. Database Initialization**
+**d. 資料庫遷移**
 
 ```bash
-# Run migrations
 python manage.py migrate
 
-#Create admin user
 python manage.py createsuperuser
 ```
 
-**e. Start Django Development Server**
+**e. 啟動後端**
 
 ```bash
 python manage.py runserver
 ```
 
-**f. Start Celery**
-
-Run the following in separate terminals:
+**f. 啟動 Celery**
 
 ```bash
-# Worker (Multi-process)
+# 如果系統支援多進程
 celery -A myproject worker -l info
 
-# Worker (Windows/Solo mode)
+# 單進程
 celery -A myproject worker -l info -P solo
 
-# Beat (Scheduler)
 celery -A myproject beat -l info
 ```
 
 ### 4. Frontend Setup
 
-**a. Install Dependencies**
+**a. 安裝依賴**
 
 ```bash
 cd frontend
 npm install
 ```
 
-**b. Lint and Start Server**
+**b. 啟動前端**
 
 ```bash
-# Start Vue.js server
 npm run dev
 ```
 
