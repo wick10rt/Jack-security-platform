@@ -27,6 +27,6 @@ urlpatterns = [
     path("api/auth/register/", UserRegisterView.as_view(), name="register"),
     # EE-1 使用者登入
     path("api/auth/login/", MyTokenObtainPairView.as_view(), name="token_obtain_pair"),
-    # 需要 Token 認證的API
+    # C-1 需要 Token 認證的 API
     path("api/", include("core.urls")),
 ]

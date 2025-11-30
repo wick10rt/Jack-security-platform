@@ -1,4 +1,3 @@
-# core/views.py
 import uuid
 import os
 import subprocess
@@ -24,10 +23,10 @@ from .serializers import (LabSerializer, LabDetailSerializer, UserRegisterSerial
 from axes.decorators import axes_dispatch
 from axes.handlers.proxy import AxesProxyHandler
 
-#B2-實驗內容服務
-# 定義實驗資料的view
+# B2 實驗內容服務
 
-# EE-3 獲取所有實驗清單
+
+# EE-3 獲取實驗清單
 class LabListView(generics.ListAPIView):
     queryset = Lab.objects.all().order_by('title')
     serializer_class = LabSerializer
@@ -38,7 +37,7 @@ class LabDetailView(generics.RetrieveAPIView):
     serializer_class = LabDetailSerializer
     lookup_field = 'id'
 
-#EE-8 獲取指定實驗的其他人解法
+# EE-8 獲取實驗的他人解法
 class CommunitySolutionListView(generics.ListAPIView):
     serializer_class = CommunitySolutionSerializer
     permission_classes = [IsAuthenticated]
@@ -47,7 +46,7 @@ class CommunitySolutionListView(generics.ListAPIView):
         user = self.request.user
         lab_id = self.kwargs.get('id')
 
-        #檢查使用者是否完成實驗
+        # 檢查使用者是否完成實驗
         is_completed = LabCompletion.objects.filter(
             user=user,
             lab_id=lab_id,
@@ -56,14 +55,14 @@ class CommunitySolutionListView(generics.ListAPIView):
         if not is_completed:
             return CommunitySolution.objects.none()
         
-        #過濾條件-只顯示關於目前實驗室的解法
+        # 過濾條件 只顯示關於目前實驗室的解法
         queryset = CommunitySolution.objects.filter(lab_id=lab_id)
 
         return queryset
 
 
-#B1-登入驗證服務
-# 定義使用者註冊的view
+# B1 登入驗證服務
+
 
 # EE-0 使用者註冊
 class UserRegisterView(generics.CreateAPIView):
@@ -71,7 +70,7 @@ class UserRegisterView(generics.CreateAPIView):
     serializer_class = UserRegisterSerializer
     permission_classes = [permissions.AllowAny]
 
-# EE-1 , EE-9 認證使用者與管理員登入並跳轉正確頁面
+# EE-1/EE-9 使用者登入與跳轉正確頁面
 @method_decorator(axes_dispatch, name='dispatch')
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
@@ -82,36 +81,31 @@ class MyTokenObtainPairView(TokenObtainPairView):
 
         user = authenticate(request=request, username=username, password=password)
 
-        #帳號或密碼錯誤
+        # 帳號或密碼錯誤
         if user is None:
-            
-            #紀錄失敗紀錄
             AxesProxyHandler.user_login_failed(request=request, sender=self.__class__, credentials={'username': username})
-
             return Response({"detail": "username or password is wrong"}, status=status.HTTP_401_UNAUTHORIZED)
 
         response = super().post(request, *args, **kwargs)
         if response.status_code == 200:
-            
             # 根據使用者決定重導向的URL
             if user.is_staff:
                 login(request, user)
                 response.data["redirect_url"] = "/admin/"
             else:
                 response.data["redirect_url"] = "/dashboard"
-
         return response
     
 
-# B3-使用者資料服務
-#定義使用者進度的view
+# B3 使用者資料服務
 
-#EE-2 查看使用者學習進度
+
+# EE-2 查看學習進度
 class UserProgressView(generics.ListAPIView):
     serializer_class = LabCompletionSerializer
     permission_classes = [IsAuthenticated]
 
-    #獲取完成實驗的狀況
+    # 獲取完成實驗的狀況
     def get_queryset(self):
         user = self.request.user
         return LabCompletion.objects.filter(user=user)
@@ -129,7 +123,7 @@ class ReflectionView(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
-        #確保資料全部寫入成功
+        # 確保防禦表單資料全部寫入成功
         with transaction.atomic():
             try:
                 completion = LabCompletion.objects.get(user=user, lab=lab)
@@ -152,22 +146,23 @@ class ReflectionView(generics.GenericAPIView):
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
 
-#B4-靶機分配服務
-#定義啟動靶機的view
+# B4 靶機分配服務
+
+
+# EE-5 啟動靶機
 class LaunchInstanceView(generics.GenericAPIView):
     serializer_class = ActiveInstanceSerializer
     permission_classes = [IsAuthenticated]
 
-    # 根據伺服器效能決定容器上限
+    # C-9 靶機數量上限
     ACTIVEINSTANCE_LIMIT = 30
     
     def post(self, request, *args, **kwargs):
-        #獲取啟動Lab的物件
         lab_id = self.kwargs.get('id')
         lab = get_object_or_404(Lab, id=lab_id)
         user = request.user
 
-        #檢查靶機是否超過系統限制
+        # 檢查靶機數量是否超過上限
         current_active_count = ActiveInstance.objects.filter(
             expires_at__gt=timezone.now()
         ).count()
@@ -182,13 +177,14 @@ class LaunchInstanceView(generics.GenericAPIView):
                 user=user,
                 expires_at__gt=timezone.now()
             ).exists()
+            # C-3 使用者只能同時啟動一個靶機
             if has_active:
                 return Response(
                     {"error": "you already have an active instance"},
                     status=status.HTTP_409_CONFLICT
                 )
 
-            #TODO 測試改的 min 要改回30 min
+            #TODO 測試改的 min 要改回 30 min
             expires_at = timezone.now() + timedelta(minutes=5)
             instance = ActiveInstance.objects.create(
                 user=user,
@@ -199,7 +195,10 @@ class LaunchInstanceView(generics.GenericAPIView):
             )
 
 
-        # D2-容器管理服務 生成 docker-compose.yml
+        # D2 容器管理服務
+
+
+        # 生成 docker-compose.yml
         instance_id = instance.id
         compose_dir = settings.BASE_DIR.parent /'instances'
         compose_dir.mkdir(exist_ok=True)
@@ -228,7 +227,7 @@ services:
             f.write(compose_content)
 
 
-        # D2-容器管理服務 使用 docker-compose 啟動容器
+        # docker-compose 啟動容器
         try:
             subprocess.run(
                 ["docker-compose","-p", project_name, "-f", str(compose_file_path), "up", "-d"],
@@ -243,7 +242,7 @@ services:
             )
         
 
-        # 獲取 D2-容器管理服務 產生的容器端口
+        # 獲取容器端口
         try:
             result = subprocess.run(
                 ['docker-compose', "-p", project_name,'-f', str(compose_file_path), 'port', 'web', '80'],
@@ -264,7 +263,7 @@ services:
             )
         
 
-        # 獲取 D2-容器管理服務 產生的容器 ID
+        # 獲取容器 ID
         try:
             result = subprocess.run(
                 ['docker-compose', '-p', project_name, '-f', str(compose_file_path), 'ps', '-q', 'web'],
@@ -297,7 +296,7 @@ services:
             )
         
 
-        # 更新 D3-資料庫服務中的紀錄
+        # 更新 D3 資料庫服務 的紀錄
         instance.instance_url = instance_url
         instance.container_id = container_id
         instance.save()
@@ -311,8 +310,6 @@ services:
         return Response(response_data, status=status.HTTP_201_CREATED)
 
 
-# B4 靶機分配服務
-# 處理訪問權限與重導向
 class AccessInstanceView(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 
@@ -325,8 +322,11 @@ class AccessInstanceView(generics.GenericAPIView):
         
         return Response({"target_url": instance.instance_url}, status=status.HTTP_200_OK)
     
+
 # B4 靶機分配服務
-# 手動關閉靶機
+
+
+# EE-11 手動關閉靶機
 class TerminateInstanceView(generics.GenericAPIView):
 
     permission_classes = [IsAuthenticated]
@@ -368,14 +368,17 @@ class TerminateInstanceView(generics.GenericAPIView):
 
             instance.delete()
             return Response(
-                {"error": "An error occurred during termination, but the record has been cleared."},
+                {"error": "An error occurred during termination"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-#B5-答案驗證服務
-#定義答案驗證的view
+
+# B5 答案驗證服務
+
+
+#EE-6提交答案
 class SubmitAnswerView(generics.GenericAPIView):
-    #EE-6提交答案
+
     serializer_class = SubmissionSerializer
     permission_classes = [IsAuthenticated]
 
@@ -389,7 +392,7 @@ class SubmitAnswerView(generics.GenericAPIView):
         serializer.is_valid(raise_exception=True)
         submitted_answer = serializer.validated_data['answer']
 
-        #答案正確
+        # 答案正確
         if submitted_answer == lab.solution:
             completion, created = LabCompletion.objects.get_or_create(
                 user=user,
@@ -397,14 +400,14 @@ class SubmitAnswerView(generics.GenericAPIView):
                 defaults={'status': 'pending_reflection'}
             )
 
-            #使用者已經完成過實驗
+            # 使用者已經完成過實驗
             if completion.status == 'completed':
                 return Response(
                     {"status": "already_completed", "message": "You have already completed this lab."},
                     status=status.HTTP_200_OK
                 )
             else:
-                #使用者第一次提交正確答案
+                # 使用者第一次提交正確答案
                 if not created:
                     completion.status = 'pending_reflection'
                     completion.save()
@@ -413,7 +416,7 @@ class SubmitAnswerView(generics.GenericAPIView):
                     {"status": "pending_reflection"},
                     status=status.HTTP_200_OK
                 )
-        #答案錯誤
+        # 答案錯誤
         else:
             return Response(
                 {"error": "wrong answer please try again"},

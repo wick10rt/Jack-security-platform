@@ -1,7 +1,7 @@
 from django.http import HttpResponseNotFound
 
 ALLOWED_QUERY_KEY = "admin_key"
-# TODO 要跟frontend/.env → VITE_ADMIN_ACCESS_KEY 一樣
+# 要跟frontend/.env → VITE_ADMIN_ACCESS_KEY 一樣
 ALLOWED_QUERY_VALUE = "@1121717dogdog1101737fatfat"
 SESSION_FLAG = "admin_key_verified"
 

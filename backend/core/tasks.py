@@ -1,4 +1,3 @@
-# core/tasks.py
 import os
 import subprocess
 import logging
