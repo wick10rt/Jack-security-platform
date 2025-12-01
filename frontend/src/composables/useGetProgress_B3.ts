@@ -2,16 +2,14 @@ import { ref, onMounted } from 'vue'
 import axios from '@/axios'
 import { useAuthStore } from '@/stores/auth'
 
-
 interface LabCompletion {
   id: string
   status: 'pending_reflection' | 'completed'
-  user: string 
-  lab: string 
+  user: string
+  lab: string
 }
 
 export function useProgress() {
-  
   const authStore = useAuthStore()
   const completions = ref<LabCompletion[]>([])
   const isLoading = ref(true)
@@ -29,7 +27,7 @@ export function useProgress() {
     error.value = null
 
     // IE-2 獲取使用者資料
-    try {      
+    try {
       const response = await axios.get<LabCompletion[]>('/progress/')
       completions.value = response.data
     } catch (err) {
@@ -44,7 +42,6 @@ export function useProgress() {
   onMounted(() => {
     fetchProgress()
   })
-
 
   return {
     completions,

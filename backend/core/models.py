@@ -75,4 +75,3 @@ class ActiveInstance(models.Model):
 
     def __str__(self):
         return f"{self.user.username} create a {self.lab.title} instance"
-

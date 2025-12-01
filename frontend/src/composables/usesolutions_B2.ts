@@ -4,14 +4,14 @@ import axios from '@/axios'
 import type { Ref } from 'vue'
 
 interface Solution {
-  payload: string;
-  reflection: string;
+  payload: string
+  reflection: string
 }
 
 // EE-8 使用者查看其他人的解法
 export function useSolutions(labId: Ref<string>) {
   const solutions = ref<Solution[]>([])
-  const showSolutions = ref(false) 
+  const showSolutions = ref(false)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 

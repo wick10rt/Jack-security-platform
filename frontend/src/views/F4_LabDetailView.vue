@@ -20,15 +20,13 @@
       </section>
 
       <section class="actions">
-          <div v-if="!instanceUrl">
+        <div v-if="!instanceUrl">
           <button @click="launchInstance" :disabled="isLaunching">
             {{ isLaunching ? '啟動中...' : '啟動靶機' }}
           </button>
         </div>
         <div v-else class="instance-info">
-          <p class="instance-url">
-            靶機已啟動：
-          </p>
+          <p class="instance-url">靶機已啟動：</p>
           <button @click="accessInstance">進入靶機</button>
           <button @click="terminateInstance" :disabled="isTerminating" class="terminate-btn">
             {{ isTerminating ? '關閉中...' : '關閉靶機' }}
@@ -103,25 +101,24 @@
       </section>
 
       <!-- SE-10 實驗完成狀態 -->
-      <section v-if="submissionSuccess || submissionStatus === 'already_completed'" class="completed-section">
-        <div class="completed-message">
-          恭喜！你已成功完成了這個實驗！
-        </div>
-        <div class="completed-message">
-          想要修改防禦表單內容，只需再填一次表單即可
-        </div>
+      <section
+        v-if="submissionSuccess || submissionStatus === 'already_completed'"
+        class="completed-section"
+      >
+        <div class="completed-message">恭喜！你已成功完成了這個實驗！</div>
+        <div class="completed-message">想要修改防禦表單內容，只需再填一次表單即可</div>
 
         <!-- 查看他人解法 EE-8 -->
         <div class="solutions-section">
           <button @click="toggleSolutions" class="solutions-toggle-btn">
             {{ showSolutions ? '隱藏他人解法' : '查看他人解法' }}
           </button>
-          
+
           <div v-if="showSolutions" class="solutions-content">
             <h3>其他人怎麼做的</h3>
             <div v-if="solutionsLoading">尋找數據中...</div>
             <div v-if="solutionsError" class="error-message">{{ solutionsError }}</div>
-            
+
             <ul v-if="solutions.length > 0">
               <li v-for="(solution, index) in solutions" :key="index">
                 <h4>匿名使用者 #{{ index + 1 }}</h4>
@@ -131,12 +128,9 @@
                 <p>{{ solution.reflection }}</p>
               </li>
             </ul>
-            <p v-else-if="!solutionsLoading && !solutionsError">
-              這邊空空如也!!!
-            </p>
+            <p v-else-if="!solutionsLoading && !solutionsError">這邊空空如也!!!</p>
           </div>
         </div>
-
       </section>
     </article>
   </div>
@@ -149,7 +143,7 @@ import { LabDetail } from '@/composables/useGetDetail_B2'
 import { useSubmit } from '@/composables/useSubmit_B5'
 import { useReflection } from '@/composables/useReflection_B3'
 import { useSolutions } from '@/composables/usesolutions_B2'
-import {useControllInstance} from '@/composables/useControlInstance_B4'
+import { useControllInstance } from '@/composables/useControlInstance_B4'
 
 // IE-4 實驗詳情
 const route = useRoute()
@@ -182,16 +176,16 @@ const {
   isLoading: solutionsLoading,
   error: solutionsError,
   toggleSolutions,
-}=useSolutions(labId)
+} = useSolutions(labId)
 
 // 啟動關閉靶機
-const { 
-  instanceUrl, 
-  isLaunching, 
-  launchError, 
+const {
+  instanceUrl,
+  isLaunching,
+  launchError,
   isTerminating,
   launchInstance,
   terminateInstance,
-  accessInstance, 
+  accessInstance,
 } = useControllInstance(labId)
 </script>

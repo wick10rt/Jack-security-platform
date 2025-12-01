@@ -29,4 +29,3 @@ class HideAdminMiddleware:
             return HttpResponseNotFound("<h1>禁止進入!!!</h1>")
 
         return self.get_response(request)
-
