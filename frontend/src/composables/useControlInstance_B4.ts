@@ -53,13 +53,13 @@ export function useControllInstance(labId: Ref<string>) {
         window.open(realUrl, '_blank')
       }
     } catch (error) {
-      alert('无法访问靶机，授权失败或发生错误。')
+      alert('無法訪問靶機，請稍後再試。')
       console.error('Access instance error:', error)
     }
   }
 
   const terminateInstance = async () => {
-    if (!confirm('確定要關閉當前靶機嗎？所有未保存的進度將會遺失。')) {
+    if (!confirm('確定要關閉當前靶機嗎？')) {
       return
     }
     isTerminating.value = true

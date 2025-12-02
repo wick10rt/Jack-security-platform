@@ -1,4 +1,3 @@
-// src/axios.ts
 import axios from 'axios'
 import type { AxiosError, InternalAxiosRequestConfig } from 'axios'
 
@@ -7,10 +6,9 @@ const axiosInstance = axios.create({
   timeout: 10000,
 })
 
-// ===== 請求攔截器 =====
+// 自動加上 Token 到每個請求的標頭
 axiosInstance.interceptors.request.use(
   (config) => {
-    // 修正：從 localStorage 讀取，避免循環依賴
     const token = localStorage.getItem('accessToken')
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`
@@ -22,7 +20,7 @@ axiosInstance.interceptors.request.use(
   },
 )
 
-// ===== 回應攔截器 =====
+// 自動刷新 Token
 axiosInstance.interceptors.response.use(
   (response) => {
     return response
@@ -30,51 +28,43 @@ axiosInstance.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
 
-    // 如果是 401 錯誤且還沒重試過
     if (error.response?.status === 401 && !originalRequest._retry) {
-      // 修正 1：排除登入和刷新 token 的請求
       if (
         originalRequest.url?.includes('/auth/login/') ||
         originalRequest.url?.includes('/auth/token/refresh/') ||
         originalRequest.url?.includes('/auth/register/')
       ) {
-        console.log('Auth endpoint failed, not attempting refresh')
+        console.log('跳過 token 刷新')
         return Promise.reject(error)
       }
 
-      // 修正 2：檢查是否有 refresh token
       const refreshToken = localStorage.getItem('refreshToken')
       if (!refreshToken) {
-        console.log('No refresh token available, cannot refresh')
+        console.log('沒有可用的 refresh token，無法刷新')
         return Promise.reject(error)
       }
 
       originalRequest._retry = true
 
       try {
-        console.log('Access token expired. Attempting to refresh...')
+        console.log('刷新 token 中')
 
-        // 修正 3：動態導入 store 避免循環依賴
         const { useAuthStore } = await import('@/stores/auth')
         const authStore = useAuthStore()
 
-        // 嘗試刷新 token
         const newToken = await authStore.refreshTokenAction()
 
-        console.log('Token refreshed successfully.')
+        console.log('成功刷新 token')
 
-        // 更新原始請求的 header
         if (originalRequest.headers) {
           originalRequest.headers.Authorization = `Bearer ${newToken}`
         }
 
-        // 重新發送原始請求
         return axiosInstance(originalRequest)
       } catch (refreshError) {
-        // 修正 4：不要調用 logout()，因為 refreshTokenAction 已經調用了 clearAuthInfo()
-        console.error('Failed to refresh token. Redirecting to login.')
+        console.error('刷新失敗')
 
-        // 只在需要時導向登入頁
+        // 刷新失敗 導向 F1 登入頁面
         if (window.location.pathname !== '/login') {
           window.location.href = '/login'
         }

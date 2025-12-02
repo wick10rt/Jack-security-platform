@@ -1,4 +1,3 @@
-// src/composables/useAuthForm.ts
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -16,10 +15,10 @@ export function useAuthForm() {
 
   const isRegisterMode = ref(false)
 
+  // 登入/註冊切換
   const toggleMode = () => {
     isRegisterMode.value = !isRegisterMode.value
 
-    // 修正: 使用 Store 提供的方法清除錯誤
     authStore.clearLoginError()
 
     Object.keys(registerErrors).forEach(
@@ -32,7 +31,7 @@ export function useAuthForm() {
     registerForm.password = ''
   }
 
-  // === 註冊表單 ===
+  // EE-0 使用者註冊
   const registerForm = reactive({ username: '', password: '' })
   const registerErrors = reactive<{
     username?: string[]
@@ -76,14 +75,15 @@ export function useAuthForm() {
     }
   }
 
-  // === 登入表單 ===
+  // EE-1 使用者登入
   const loginForm = reactive({ username: '', password: '' })
 
   const handleLogin = async () => {
     if (isLoggingIn.value) return
 
     const redirectUrl = await authStore.login(loginForm.username, loginForm.password)
-
+    
+    // 根據後端回傳的 redirect_url 進行導向
     if (redirectUrl) {
       if (redirectUrl === '/admin/') {
         const adminUrl = new URL(ADMIN_URL)

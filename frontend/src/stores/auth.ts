@@ -1,4 +1,3 @@
-// src/stores/auth.ts
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import axios from '@/axios'
@@ -19,15 +18,16 @@ export const useAuthStore = defineStore('auth', () => {
   const isLoggingIn = ref(false)
   const loginError = ref<string | null>(null)
 
-  // 防止重複刷新的標記
   let isRefreshing = false
   let refreshSubscribers: Array<(token: string) => void> = []
-
+  
+  // 驗證使用者 Token 是否有效
   const isAuthenticated = computed(() => {
     if (!accessToken.value || !tokenExp.value) return false
     return tokenExp.value * 1000 > Date.now()
   })
 
+  // 取得加設置使用者請求帶 Token
   function setAuthInfo(access: string, refresh?: string, updateUserInfo = true) {
     accessToken.value = access
     localStorage.setItem('accessToken', access)
@@ -51,13 +51,13 @@ export const useAuthStore = defineStore('auth', () => {
     axios.defaults.headers.common['Authorization'] = `Bearer ${access}`
   }
 
+  // 清除使用者登入認證資料
   function clearAuthInfo() {
     accessToken.value = null
     refreshToken.value = null
     username.value = null
     isAdmin.value = false
     tokenExp.value = 0
-    // 修正：不清除 loginError 和 isLoggingIn
 
     localStorage.removeItem('accessToken')
     localStorage.removeItem('refreshToken')
@@ -71,11 +71,11 @@ export const useAuthStore = defineStore('auth', () => {
     isRefreshing = false
   }
 
-  // 新增: 清除登入錯誤
   function clearLoginError() {
     loginError.value = null
   }
 
+  // EE-1 使用者登入
   async function login(user: string, pass: string): Promise<string | null> {
     isLoggingIn.value = true
     loginError.value = null
@@ -116,10 +116,11 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  // 刷新 Token
   async function refreshTokenAction(): Promise<string> {
     if (!refreshToken.value) {
       clearAuthInfo()
-      throw new Error('No refresh token available')
+      throw new Error('沒有可用的 refresh token')
     }
 
     if (isRefreshing) {
@@ -133,7 +134,6 @@ export const useAuthStore = defineStore('auth', () => {
     isRefreshing = true
 
     try {
-      // 修正: 刷新時暫時移除 Authorization header
       const tempAuth = axios.defaults.headers.common['Authorization']
       delete axios.defaults.headers.common['Authorization']
 
@@ -143,23 +143,21 @@ export const useAuthStore = defineStore('auth', () => {
 
       const { access } = response.data
 
-      // setAuthInfo 會設置新的 Authorization header，所以不需要手動恢復
       setAuthInfo(access, undefined, false)
 
-      // 通知所有等待的請求
       refreshSubscribers.forEach((callback) => callback(access))
       refreshSubscribers = []
 
       return access
     } catch (error: any) {
-      // Refresh token 失敗，清除所有資訊
       clearAuthInfo()
-      throw new Error('Token refresh failed')
+      throw new Error('刷新 token 失敗')
     } finally {
       isRefreshing = false
     }
   }
 
+  // EE-0 使用者註冊
   async function register(user: string, pass: string): Promise<void> {
     const publicAxios = axios.create({
       baseURL: axios.defaults.baseURL,
@@ -173,12 +171,11 @@ export const useAuthStore = defineStore('auth', () => {
 
   function logout() {
     clearAuthInfo()
-    loginError.value = null // ✅ 只有登出時才清除
+    loginError.value = null
     isLoggingIn.value = false
   }
 
   return {
-    // 狀態
     accessToken,
     refreshToken,
     username,
@@ -186,12 +183,10 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     isLoggingIn,
     loginError,
-
-    // 方法
     login,
     register,
     logout,
     refreshTokenAction,
-    clearLoginError, // 新增: 暴露清除錯誤的方法
+    clearLoginError, 
   }
 })
