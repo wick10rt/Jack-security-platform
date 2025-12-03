@@ -1,7 +1,8 @@
 import uuid
 import os
 import subprocess
-
+import logging
+from .tasks import launch_instance_task, terminate_instance_task
 from django.shortcuts import render
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -32,7 +33,7 @@ from .serializers import (
 
 from axes.decorators import axes_dispatch
 from axes.handlers.proxy import AxesProxyHandler
-
+logger = logging.getLogger(__name__)
 # B2 實驗內容服務
 
 
@@ -169,228 +170,7 @@ class ReflectionView(generics.GenericAPIView):
 # B4 靶機分配服務
 
 
-# EE-5 啟動靶機
-class LaunchInstanceView(generics.GenericAPIView):
-    serializer_class = ActiveInstanceSerializer
-    permission_classes = [IsAuthenticated]
-
-    # C-9 靶機數量上限
-    ACTIVEINSTANCE_LIMIT = 30
-
-    def post(self, request, *args, **kwargs):
-        lab_id = self.kwargs.get("id")
-        lab = get_object_or_404(Lab, id=lab_id)
-        user = request.user
-
-        # 檢查靶機數量是否超過上限
-        current_active_count = ActiveInstance.objects.filter(
-            expires_at__gt=timezone.now()
-        ).count()
-        if current_active_count >= self.ACTIVEINSTANCE_LIMIT:
-            return Response(
-                {
-                    "error": "instance launch failed please try again later if still not work contact admin william -> s1121717@mail.yzu.edu.tw"
-                },
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
-
-        with transaction.atomic():
-            has_active = (
-                ActiveInstance.objects.select_for_update()
-                .filter(user=user, expires_at__gt=timezone.now())
-                .exists()
-            )
-            # C-3 使用者只能同時啟動一個靶機
-            if has_active:
-                return Response(
-                    {"error": "you already have an active instance"},
-                    status=status.HTTP_409_CONFLICT,
-                )
-
-            # TODO 測試改的 min 要改回 30 min
-            expires_at = timezone.now() + timedelta(minutes=5)
-            instance = ActiveInstance.objects.create(
-                user=user,
-                lab=lab,
-                instance_url="waiting...",
-                container_id="waiting...",
-                expires_at=expires_at,
-            )
-
-        # D2 容器管理服務
-
-        # 生成 docker-compose.yml
-        instance_id = instance.id
-        compose_dir = settings.BASE_DIR.parent / "instances"
-        compose_dir.mkdir(exist_ok=True)
-        compose_file_path = compose_dir / f"docker-compose-{instance_id}.yml"
-        project_name = f"instance_{instance_id}"
-        compose_content = f"""
-services:
-  web:
-    image: {lab.docker_image} 
-    ports:
-      - "0.0.0.0::80"
-    depends_on:
-      - db
-    environment:
-      - DB_HOST=db
-      - DB_USER=root
-      - DB_PASSWORD=root
-      - DB_NAME=security
-  db:
-    image: mysql:5.7
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: security
-"""
-        with open(compose_file_path, "w") as f:
-            f.write(compose_content)
-
-        # docker-compose 啟動容器
-        try:
-            subprocess.run(
-                [
-                    "docker-compose",
-                    "-p",
-                    project_name,
-                    "-f",
-                    str(compose_file_path),
-                    "up",
-                    "-d",
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-        except subprocess.CalledProcessError as e:
-            os.remove(compose_file_path)
-            instance.delete()
-            return Response(
-                {
-                    "error": "Launch instance failed, please try again or contact admin william"
-                },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-        # 獲取容器端口
-        try:
-            result = subprocess.run(
-                [
-                    "docker-compose",
-                    "-p",
-                    project_name,
-                    "-f",
-                    str(compose_file_path),
-                    "port",
-                    "web",
-                    "80",
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-            host_port = result.stdout.strip().split(":")[-1]
-            instance_url = f"http://127.0.0.1:{host_port}"
-        except (subprocess.CalledProcessError, IndexError) as e:
-            subprocess.run(
-                [
-                    "docker-compose",
-                    "-p",
-                    project_name,
-                    "-f",
-                    str(compose_file_path),
-                    "down",
-                    "-v",
-                ],
-                check=True,
-            )
-            os.remove(compose_file_path)
-            instance.delete()
-            return Response(
-                {
-                    "error": "Failed to get instance details, please try again or contact admin william"
-                },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-        # 獲取容器 ID
-        try:
-            result = subprocess.run(
-                [
-                    "docker-compose",
-                    "-p",
-                    project_name,
-                    "-f",
-                    str(compose_file_path),
-                    "ps",
-                    "-q",
-                    "web",
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-            container_id = result.stdout.strip()
-            if not container_id:
-                raise ValueError("container id not found")
-        except subprocess.CalledProcessError as e:
-            subprocess.run(
-                [
-                    "docker-compose",
-                    "-p",
-                    project_name,
-                    "-f",
-                    str(compose_file_path),
-                    "down",
-                    "-v",
-                ],
-                check=True,
-            )
-            os.remove(compose_file_path)
-            instance.delete()
-            return Response(
-                {
-                    "error": "Failed to get instance details, please try again or contact admin william"
-                },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-        except ValueError:
-            subprocess.run(
-                [
-                    "docker-compose",
-                    "-p",
-                    project_name,
-                    "-f",
-                    str(compose_file_path),
-                    "down",
-                    "-v",
-                ],
-                check=True,
-            )
-            os.remove(compose_file_path)
-            instance.delete()
-            return Response(
-                {
-                    "error": "Failed to get instance details, please try again or contact admin william"
-                },
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-        # 更新 D3 資料庫服務 的紀錄
-        instance.instance_url = instance_url
-        instance.container_id = container_id
-        instance.save()
-
-        proxy_url = f"http://127.0.0.1:8000/api/instances/{instance.id}/access/"
-
-        serializer = self.get_serializer(instance)
-        response_data = serializer.data
-        response_data["proxy_url"] = proxy_url
-
-        return Response(response_data, status=status.HTTP_201_CREATED)
-
-
+# 取得靶機地址
 class AccessInstanceView(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 
@@ -407,8 +187,54 @@ class AccessInstanceView(generics.GenericAPIView):
             {"target_url": instance.instance_url}, status=status.HTTP_200_OK
         )
 
+# EE-5 啟動靶機
+class LaunchInstanceView(generics.GenericAPIView):
+    serializer_class = ActiveInstanceSerializer
+    permission_classes = [IsAuthenticated]
+    ACTIVEINSTANCE_LIMIT = 30
 
-# B4 靶機分配服務
+    def post(self, request, *args, **kwargs):
+        lab_id = self.kwargs.get("id")
+        lab = get_object_or_404(Lab, id=lab_id)
+        user = request.user
+
+        with transaction.atomic():
+            qs = ActiveInstance.objects.select_for_update()
+            
+            # C-3 檢查使用者是否已有運行中的靶機
+            if qs.filter(user=user, expires_at__gt=timezone.now()).exists():
+                return Response(
+                    {"error": "you aleady have an active instance"},
+                    status=status.HTTP_409_CONFLICT,
+                )
+
+            # C-9 檢查目前靶機數量是否達上限
+            current_active_count = qs.filter(expires_at__gt=timezone.now()).count()
+            if current_active_count >= self.ACTIVEINSTANCE_LIMIT:
+                return Response(
+                    {"error": "service is busy, please try again later"},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+
+            expires_at = timezone.now() + timedelta(minutes=30)
+            instance = ActiveInstance.objects.create(
+                user=user,
+                lab=lab,
+                instance_url="creating...",
+                container_id="creating...",
+                expires_at=expires_at,
+            )
+
+        # celery 啟動靶機任務
+        launch_instance_task.delay(
+            instance_id_str=str(instance.id),
+            lab_id_str=str(lab.id),
+            user_id_str=str(user.id)
+        )
+        logger.info(f"create a instance {instance.id} for user {user.username}")
+
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data, status=status.HTTP_202_ACCEPTED)
 
 
 # EE-11 手動關閉靶機
@@ -417,54 +243,27 @@ class TerminateInstanceView(generics.GenericAPIView):
 
     def post(self, request, *args, **kwargs):
         user = request.user
-
         instance = ActiveInstance.objects.filter(user=user).first()
 
         if not instance:
             return Response(
-                {"message": "No active instance found to terminate."},
+                {"message": "No active instance found"},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        instance_id = instance.id
-        project_name = f"instance_{instance_id}"
-        compose_dir = settings.BASE_DIR.parent / "instances"
-        compose_file_path = compose_dir / f"docker-compose-{instance_id}.yml"
+        instance_id_str = str(instance.id)
+        container_id = instance.container_id
+        
+        # celery 銷毀靶機任務
+        terminate_instance_task.delay(instance_id_str, container_id)
+        
+        instance.delete()
+        logger.info(f"terminate instance {instance_id_str}")
 
-        try:
-            if compose_file_path.exists():
-                subprocess.run(
-                    [
-                        "docker-compose",
-                        "-p",
-                        project_name,
-                        "-f",
-                        str(compose_file_path),
-                        "down",
-                        "-v",
-                    ],
-                    check=True,
-                    capture_output=True,
-                    text=True,
-                )
-                os.remove(compose_file_path)
-            else:
-                subprocess.run(
-                    ["docker", "rm", "-f", instance.container_id], check=True
-                )
-
-            instance.delete()
-
-            return Response(
-                {"message": f"Instance {instance_id} terminated successfully."},
-                status=status.HTTP_200_OK,
-            )
-        except Exception as e:
-            instance.delete()
-            return Response(
-                {"error": "An error occurred during termination"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+        return Response(
+            {"message": f"Terminating for instance {instance_id_str}"},
+            status=status.HTTP_202_ACCEPTED,
+        )
 
 
 # B5 答案驗證服務
