@@ -33,7 +33,10 @@ from .serializers import (
 
 from axes.decorators import axes_dispatch
 from axes.handlers.proxy import AxesProxyHandler
+
 logger = logging.getLogger(__name__)
+
+
 # B2 實驗內容服務
 
 
@@ -187,6 +190,7 @@ class AccessInstanceView(generics.GenericAPIView):
             {"target_url": instance.instance_url}, status=status.HTTP_200_OK
         )
 
+
 # EE-5 啟動靶機
 class LaunchInstanceView(generics.GenericAPIView):
     serializer_class = ActiveInstanceSerializer
@@ -200,7 +204,7 @@ class LaunchInstanceView(generics.GenericAPIView):
 
         with transaction.atomic():
             qs = ActiveInstance.objects.select_for_update()
-            
+
             # C-3 檢查使用者是否已有運行中的靶機
             if qs.filter(user=user, expires_at__gt=timezone.now()).exists():
                 return Response(
@@ -229,7 +233,7 @@ class LaunchInstanceView(generics.GenericAPIView):
         launch_instance_task.delay(
             instance_id_str=str(instance.id),
             lab_id_str=str(lab.id),
-            user_id_str=str(user.id)
+            user_id_str=str(user.id),
         )
         logger.info(f"create a instance {instance.id} for user {user.username}")
 
@@ -253,10 +257,10 @@ class TerminateInstanceView(generics.GenericAPIView):
 
         instance_id_str = str(instance.id)
         container_id = instance.container_id
-        
+
         # celery 銷毀靶機任務
         terminate_instance_task.delay(instance_id_str, container_id)
-        
+
         instance.delete()
         logger.info(f"terminate instance {instance_id_str}")
 
