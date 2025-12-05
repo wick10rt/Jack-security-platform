@@ -19,10 +19,13 @@
         <div v-html="lab.description"></div>
       </section>
 
+      <!-- 靶機操作 -->
       <section class="actions">
         <div v-if="!instanceUrl">
           <button @click="launchInstance" :disabled="isLaunching">
-            {{ isLaunching ? '啟動中...' : '啟動靶機' }}
+            {{
+              isLaunching ? (isPolling ? '靶機創建中，請稍候...' : '正在派發任務...') : '啟動靶機'
+            }}
           </button>
         </div>
         <div v-else class="instance-info">
@@ -137,7 +140,7 @@
 </template>
 
 <script setup lang="ts">
-import { toRef, watch, type Ref } from 'vue'
+import { toRef, watch, type Ref, onMounted } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { LabDetail } from '@/composables/useGetDetail_B2'
 import { useSubmit } from '@/composables/useSubmit_B5'
@@ -184,6 +187,7 @@ const {
   isLaunching,
   launchError,
   isTerminating,
+  isPolling,
   launchInstance,
   terminateInstance,
   accessInstance,

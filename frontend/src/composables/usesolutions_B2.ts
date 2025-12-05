@@ -1,4 +1,3 @@
-// src/composables/useSolutions.ts
 import { ref } from 'vue'
 import axios from '@/axios'
 import type { Ref } from 'vue'

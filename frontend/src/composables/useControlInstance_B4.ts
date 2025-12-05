@@ -1,12 +1,21 @@
-// src/composables/useControllInstance_B4.ts
-import { ref } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import axios from '@/axios'
 import type { Ref } from 'vue'
-import daxios from 'axios'
+import { isAxiosError } from 'axios'
 
 interface ErrorResponseData {
   error?: string
   detail?: string
+}
+
+interface LaunchResponse {
+  id: string
+  instance_url: string
+}
+
+interface StatusResponse {
+  instance_url: string
+  container_id: string
 }
 
 export function useControllInstance(labId: Ref<string>) {
@@ -14,6 +23,37 @@ export function useControllInstance(labId: Ref<string>) {
   const isLaunching = ref(false)
   const launchError = ref<string | null>(null)
   const isTerminating = ref(false)
+  const isPolling = ref(false)
+  const pollingInterval = ref<number | undefined>(undefined)
+
+  const stopPolling = () => {
+    if (pollingInterval.value) {
+      clearInterval(pollingInterval.value)
+      pollingInterval.value = undefined
+      isPolling.value = false
+    }
+  }
+  onUnmounted(stopPolling)
+
+  const pollInstanceStatus = (instanceId: string) => {
+    isPolling.value = true
+    pollingInterval.value = window.setInterval(async () => {
+      try {
+        const response = await axios.get<StatusResponse>(`/instances/${instanceId}/status/`)
+        const data = response.data
+
+        if (data.instance_url && data.instance_url !== 'creating...') {
+          stopPolling() // 停止轮询
+          instanceUrl.value = `/instances/${instanceId}/access/`
+          isLaunching.value = false
+        }
+      } catch (error) {
+        stopPolling()
+        launchError.value = '靶機創建失敗，請重試。'
+        isLaunching.value = false
+      }
+    }, 3000)
+  }
 
   const launchInstance = async () => {
     isLaunching.value = true
@@ -21,23 +61,21 @@ export function useControllInstance(labId: Ref<string>) {
     try {
       const response = await axios.post(`/labs/${labId.value}/launch/`)
 
-      instanceUrl.value = response.data.proxy_url
-    } catch (err: unknown) {
-      if (
-        typeof err === 'object' &&
-        err !== null &&
-        'response' in err &&
-        (err as any).response &&
-        typeof (err as any).response.data === 'object'
-      ) {
-        const response = (err as any).response
-        const data: ErrorResponseData = response.data
-        launchError.value = data.error || data.detail || `請求失敗，狀態碼：${response.status}`
+      if (response.status === 202) {
+        const instanceId = response.data.id
+        pollInstanceStatus(instanceId)
       } else {
-        launchError.value = '發生未知錯誤或網路異常，請重試。'
-        console.error('An unexpected error occurred during launch:', err)
+        launchError.value = '靶機創建失敗，請重試。'
+        isLaunching.value = false
       }
-    } finally {
+    } catch (err) {
+      if (isAxiosError<ErrorResponseData>(err) && err.response) {
+        launchError.value =
+          err.response.data.error || err.response.data.detail || `出現錯誤：${err.response.status}`
+      } else {
+        launchError.value = '出現未知錯誤，請重試。'
+        console.error('An unexpected error occurred during launch dispatch:', err)
+      }
       isLaunching.value = false
     }
   }
@@ -80,9 +118,9 @@ export function useControllInstance(labId: Ref<string>) {
     isLaunching,
     launchError,
     isTerminating,
+    isPolling,
     launchInstance,
     terminateInstance,
     accessInstance,
   }
 }
-

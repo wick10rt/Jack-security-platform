@@ -173,24 +173,6 @@ class ReflectionView(generics.GenericAPIView):
 # B4 靶機分配服務
 
 
-# 取得靶機地址
-class AccessInstanceView(generics.GenericAPIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, *args, **kwargs):
-        instance_id = self.kwargs.get("id")
-        instance = get_object_or_404(ActiveInstance, id=instance_id)
-
-        if instance.user != request.user:
-            return Response(
-                {"error": "Permission denied"}, status=status.HTTP_403_FORBIDDEN
-            )
-
-        return Response(
-            {"target_url": instance.instance_url}, status=status.HTTP_200_OK
-        )
-
-
 # EE-5 啟動靶機
 class LaunchInstanceView(generics.GenericAPIView):
     serializer_class = ActiveInstanceSerializer
@@ -270,6 +252,39 @@ class TerminateInstanceView(generics.GenericAPIView):
         )
 
 
+# 取的靶機狀態
+class InstanceStatusView(generics.RetrieveAPIView):
+    permission_classes = [IsAuthenticated]
+    queryset = ActiveInstance.objects.all()
+    serializer_class = ActiveInstanceSerializer
+    lookup_field = 'id'
+
+    def get(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.user != request.user:
+            return Response({"error": "Permission denied"}, status=status.HTTP_403_FORBIDDEN)
+        
+        return super().get(request, *args, **kwargs)
+    
+
+# 取得靶機地址
+class AccessInstanceView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        instance_id = self.kwargs.get("id")
+        instance = get_object_or_404(ActiveInstance, id=instance_id)
+
+        if instance.user != request.user:
+            return Response(
+                {"error": "Permission denied"}, status=status.HTTP_403_FORBIDDEN
+            )
+
+        return Response(
+            {"target_url": instance.instance_url}, status=status.HTTP_200_OK
+        )
+    
+    
 # B5 答案驗證服務
 
 
