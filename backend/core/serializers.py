@@ -5,46 +5,23 @@ from .models import Lab, User, LabCompletion, ActiveInstance, CommunitySolution
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 
-# B2 實驗內容服務
-
-
-# IE-3 實驗清單的序列化器
-class LabSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Lab
-        fields = ["id", "title", "category"]
-
-
-# IE-4 實驗詳情的序列化器
-class LabDetailSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Lab
-        fields = ["id", "title", "description", "category"]
-
-
-# IE-8 他人解法的序列化器
-class CommunitySolutionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = CommunitySolution
-        fields = ["reflection", "payload"]
-
-
 # B1 登入驗證服務
 
 
-# IE-0 使用者註冊的序列化器
+# IE-0 使用者註冊
 class UserRegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["username", "password"]
         extra_kwargs = {"password": {"write_only": True}}
 
-    # 驗證密碼強度
+    # S1 驗證密碼強度
     def validate_password(self, value):
         user = self.instance or User(username=self.initial_data.get("username"))
         validate_password(value, user)
         return value
 
+    # 新增使用者
     def create(self, validated_data):
         user = User.objects.create_user(
             username=validated_data["username"], password=validated_data["password"]
@@ -52,7 +29,8 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         return user
 
 
-# IE-1 使用者身份驗證的序列化器
+# IE-1 使用者身份驗證
+# S4 產生 JWT
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
@@ -60,12 +38,36 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         token["username"] = user.username
         token["is_admin"] = user.is_staff
         return token
+    
+
+# B2 實驗內容服務
+
+
+# IE-3 實驗清單
+class LabSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Lab
+        fields = ["id", "title", "category"]
+
+
+# IE-4 實驗詳情
+class LabDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Lab
+        fields = ["id", "title", "description", "category"]
+
+
+# IE-8 他人解法
+class CommunitySolutionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CommunitySolution
+        fields = ["reflection", "payload"]
 
 
 # B3 使用者資料服務
 
 
-# IE-2 學習進度的序列化器
+# IE-2 學習進度
 class LabCompletionSerializer(serializers.ModelSerializer):
     lab = serializers.StringRelatedField(read_only=True)
     user = serializers.StringRelatedField(read_only=True)
@@ -75,7 +77,7 @@ class LabCompletionSerializer(serializers.ModelSerializer):
         fields = ["id", "status", "user", "lab"]
 
 
-# IE-7 防禦表單的序列化器
+# IE-7 防禦表單
 class ReflectionSerializer(serializers.ModelSerializer):
     class Meta:
         model = CommunitySolution
@@ -86,7 +88,7 @@ class ReflectionSerializer(serializers.ModelSerializer):
 # B4 靶機分配服務
 
 
-# IE-5 啟動靶機的序列化器
+# IE-5 啟動靶機
 class ActiveInstanceSerializer(serializers.ModelSerializer):
     user = serializers.StringRelatedField(read_only=True)
     lab = serializers.StringRelatedField(read_only=True)
@@ -100,6 +102,6 @@ class ActiveInstanceSerializer(serializers.ModelSerializer):
 # B5 答案驗證服務
 
 
-# IE-6 提交答案的序列化器
+# IE-6 提交答案
 class SubmissionSerializer(serializers.Serializer):
     answer = serializers.CharField(max_length=255)

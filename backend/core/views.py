@@ -17,7 +17,6 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.serializers import ValidationError
-
 from .models import Lab, User, LabCompletion, ActiveInstance, CommunitySolution
 from .serializers import (
     LabSerializer,
@@ -30,50 +29,10 @@ from .serializers import (
     MyTokenObtainPairSerializer,
     ReflectionSerializer,
 )
-
 from axes.decorators import axes_dispatch
 from axes.handlers.proxy import AxesProxyHandler
 
 logger = logging.getLogger(__name__)
-
-
-# B2 實驗內容服務
-
-
-# EE-3 獲取實驗清單
-class LabListView(generics.ListAPIView):
-    queryset = Lab.objects.all().order_by("title")
-    serializer_class = LabSerializer
-
-
-# EE-4 獲取指定的實驗詳情
-class LabDetailView(generics.RetrieveAPIView):
-    queryset = Lab.objects.all()
-    serializer_class = LabDetailSerializer
-    lookup_field = "id"
-
-
-# EE-8 獲取實驗的他人解法
-class CommunitySolutionListView(generics.ListAPIView):
-    serializer_class = CommunitySolutionSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        user = self.request.user
-        lab_id = self.kwargs.get("id")
-
-        # 檢查使用者是否完成實驗
-        is_completed = LabCompletion.objects.filter(
-            user=user, lab_id=lab_id, status="completed"
-        ).exists()
-
-        if not is_completed:
-            return CommunitySolution.objects.none()
-
-        # 過濾條件 只顯示關於目前實驗室的解法
-        queryset = CommunitySolution.objects.filter(lab_id=lab_id)
-
-        return queryset
 
 
 # B1 登入驗證服務
@@ -86,8 +45,8 @@ class UserRegisterView(generics.CreateAPIView):
     permission_classes = [permissions.AllowAny]
 
 
-# EE-1/EE-9 使用者登入與跳轉正確頁面
-@method_decorator(axes_dispatch, name="dispatch")
+# EE-1/EE-9 使用者/管理員登入
+@method_decorator(axes_dispatch, name="dispatch")   # S2 axes 暴力破解防護
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
 
@@ -120,6 +79,45 @@ class MyTokenObtainPairView(TokenObtainPairView):
         return response
 
 
+# B2 實驗內容服務
+
+
+# EE-3 獲取實驗清單
+class LabListView(generics.ListAPIView):
+    queryset = Lab.objects.all().order_by("title")
+    serializer_class = LabSerializer
+
+
+# EE-4 獲取指定的實驗詳情
+class LabDetailView(generics.RetrieveAPIView):
+    queryset = Lab.objects.all()
+    serializer_class = LabDetailSerializer
+    lookup_field = "id"
+
+
+# EE-8 獲取實驗的他人解法
+class CommunitySolutionListView(generics.ListAPIView):
+    serializer_class = CommunitySolutionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        lab_id = self.kwargs.get("id")
+
+        # C-6 檢查使用者是否完成實驗
+        is_completed = LabCompletion.objects.filter(
+            user=user, lab_id=lab_id, status="completed"
+        ).exists()
+
+        if not is_completed:
+            return CommunitySolution.objects.none()
+
+        # 過濾條件 只顯示關於目前實驗室的解法
+        queryset = CommunitySolution.objects.filter(lab_id=lab_id)
+
+        return queryset
+
+
 # B3 使用者資料服務
 
 
@@ -131,7 +129,7 @@ class UserProgressView(generics.ListAPIView):
     # 獲取完成實驗的狀況
     def get_queryset(self):
         user = self.request.user
-        return LabCompletion.objects.filter(user=user)
+        return LabCompletion.objects.filter(user=user)  # S6 過濾使用者資料
 
 
 # EE-7 提交防禦表單
@@ -162,6 +160,7 @@ class ReflectionView(generics.GenericAPIView):
                 user=user, lab=lab, defaults=serializer.validated_data
             )
 
+            # C-5 完成表單後才更新狀態為完成
             if completion.status == "pending_reflection":
                 completion.status = "completed"
                 completion.save()
@@ -177,7 +176,7 @@ class ReflectionView(generics.GenericAPIView):
 class LaunchInstanceView(generics.GenericAPIView):
     serializer_class = ActiveInstanceSerializer
     permission_classes = [IsAuthenticated]
-    ACTIVEINSTANCE_LIMIT = 30
+    ACTIVEINSTANCE_LIMIT = 30   # C-9 靶機數量上限
 
     def post(self, request, *args, **kwargs):
         lab_id = self.kwargs.get("id")
@@ -202,7 +201,7 @@ class LaunchInstanceView(generics.GenericAPIView):
                     status=status.HTTP_503_SERVICE_UNAVAILABLE,
                 )
 
-            expires_at = timezone.now() + timedelta(minutes=30)
+            expires_at = timezone.now() + timedelta(minutes=30)    # C-4 靶機有效期限30分鐘
             instance = ActiveInstance.objects.create(
                 user=user,
                 lab=lab,
@@ -252,7 +251,7 @@ class TerminateInstanceView(generics.GenericAPIView):
         )
 
 
-# 取的靶機狀態
+# 取得靶機狀態
 class InstanceStatusView(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated]
     queryset = ActiveInstance.objects.all()
@@ -275,6 +274,7 @@ class AccessInstanceView(generics.GenericAPIView):
         instance_id = self.kwargs.get("id")
         instance = get_object_or_404(ActiveInstance, id=instance_id)
 
+        # S6 檢查使用者是否為靶機擁有者
         if instance.user != request.user:
             return Response(
                 {"error": "Permission denied"}, status=status.HTTP_403_FORBIDDEN

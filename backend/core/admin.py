@@ -14,7 +14,7 @@ class UserAdmin(admin.ModelAdmin):
 # Lab Model
 @admin.register(Lab)
 class LabAdmin(admin.ModelAdmin):
-    list_display = ("title", "category", "docker_image", "description", "solution")
+    list_display = ("title", "category", "docker_image", "description", "solution",)
     list_filter = ("category",)
     search_fields = ("title", "description")
 

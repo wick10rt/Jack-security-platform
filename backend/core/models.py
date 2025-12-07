@@ -3,7 +3,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 
 
-# 定義資料庫的資料結構
+# S3 使用物件關聯對應定義資料庫的資料結構
 # D3 資料庫服務
 
 
@@ -35,6 +35,7 @@ class CommunitySolution(models.Model):
     payload = models.TextField(blank=False, null=False)
     reflection = models.TextField(blank=False, null=False)
 
+    # 一個使用者對同一個實驗只能有一個解法
     class Meta:
         unique_together = ("lab", "user")
 
@@ -48,12 +49,13 @@ class LabCompletion(models.Model):
         ("pending_reflection", "Pending Reflection"),
         ("completed", "Completed"),
     ]
-
+    
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="completions")
     lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name="completions")
     status = models.CharField(max_length=50, choices=status_choices)
 
+    # 一個使用者對同一個實驗只能有一個紀錄
     class Meta:
         unique_together = ("user", "lab")
 

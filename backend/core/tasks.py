@@ -8,6 +8,7 @@ from django.conf import settings
 from celery import shared_task
 from .models import ActiveInstance, Lab, User
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -24,15 +25,15 @@ def launch_instance_task(instance_id_str, lab_id_str, user_id_str):
         lab = Lab.objects.get(id=lab_id_str)
         user = User.objects.get(id=user_id_str)
     except (Lab.DoesNotExist, User.DoesNotExist):
-        logger.error(f"創建 {instance_id} 出現錯誤 清除資料")
+        logger.error(f"創建 {instance_id} 出現錯誤: 找不到實驗或使用者")
         ActiveInstance.objects.filter(id=instance_id).delete()
         return
+
 
     # 建立 docker-compose.yml
     compose_dir = (settings.BASE_DIR.parent / "instances").resolve()
     compose_file_path = compose_dir / f"docker-compose-{instance_id}.yml"
     project_name = f"instance_{instance_id}"
-
     compose_content = f"""
 services:
   web:
@@ -65,9 +66,9 @@ services:
     with open(compose_file_path, "w") as f:
         f.write(compose_content)
 
+    # D2 容器管理服務
+    # 啟動容器
     try:
-        # D2 容器管理服務
-        # 啟動容器
         subprocess.run(
             [
                 "docker-compose",
@@ -99,9 +100,8 @@ services:
             text=True,
         )
         host_port = port_result.stdout.strip().split(":")[-1]
-
-        instance_url = f"http://127.0.0.1:{host_port}"
-
+        instance_url = f"http://127.0.0.1:{host_port}"     
+        
         ps_result = subprocess.run(
             [
                 "docker-compose",
@@ -123,10 +123,10 @@ services:
         instance.instance_url = instance_url
         instance.container_id = container_id
         instance.save()
-        logger.info(f"{instance_id} 啟動成功 地址 = {instance_url}")
+        logger.info(f"成功啟動 {instance_id} 靶機地址: {instance_url}")
 
     except Exception as e:
-        logger.error(f"啟動失敗 {instance_id}: {e}")
+        logger.error(f"{instance_id} 啟動失敗: {e}")
         if compose_file_path.exists():
             subprocess.run(
                 [
@@ -171,7 +171,7 @@ def terminate_instance_task(instance_id_str, container_id):
             )
             os.remove(compose_file_path)
         elif container_id and container_id not in ("", "waiting...", "creating..."):
-            logger.warning(f"沒找到檔案 {instance_id_str} 使用容器ID刪除容器")
+            logger.warning(f"沒找到yml檔案 {instance_id_str} 使用容器ID清除")
             subprocess.run(
                 ["docker", "rm", "-f", container_id],
                 check=True,
@@ -179,13 +179,13 @@ def terminate_instance_task(instance_id_str, container_id):
                 text=True,
             )
         else:
-            logger.error(f"無法清除{instance_id_str}")
+            logger.error(f"無法清除 {instance_id_str}")
 
         logger.info(f"清除 {instance_id_str} 成功")
     except subprocess.CalledProcessError as e:
-        logger.error(f"清除 {instance_id_str} 出現錯誤 {e.stderr}")
+        logger.error(f"Docker 清除 {instance_id_str} 出現錯誤: {e.stderr}")
     except Exception as e:
-        logger.error(f"出現奇怪錯誤 {instance_id_str}: {e}")
+        logger.error(f"{instance_id_str} 出現怪怪錯誤: {e}")
 
     ActiveInstance.objects.filter(id=uuid.UUID(instance_id_str)).delete()
 
@@ -206,5 +206,5 @@ def cleanup_expired_instances():
 
         terminate_instance_task.delay(instance_id_str, instance.container_id)
 
-    return f"Dispatched cleanup for {len(expired_instances)} instances."
+    return f"開始 {len(expired_instances)} 個清理任務"
 
