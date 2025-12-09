@@ -19,22 +19,37 @@
         <div v-html="lab.description"></div>
       </section>
 
-      <!-- 靶機操作 -->
       <section class="actions">
-        <div v-if="!instanceUrl">
+        <!-- EE-5 啟動靶機 -->
+        <div v-if="instanceStatus === 'no-instance'">
           <button @click="launchInstance" :disabled="isLaunching">
-            {{
-              isLaunching ? (isPolling ? '靶機創建中，請稍候...' : '正在派發任務...') : '啟動靶機'
-            }}
+            {{ isLaunching ? '靶機創建中...' : '啟動靶機' }}
           </button>
         </div>
-        <div v-else class="instance-info">
-          <p class="instance-url">靶機已啟動：</p>
-          <button @click="accessInstance">進入靶機</button>
+
+        <!-- 有其他實驗的靶機在運行 -->
+        <div v-else-if="instanceStatus === 'other-lab'" class="other-instance-warning">
+          <p class="warning-message">你在其他實驗中有一個靶機正在運行</p>
           <button @click="terminateInstance" :disabled="isTerminating" class="terminate-btn">
-            {{ isTerminating ? '關閉中...' : '關閉靶機' }}
+            {{ isTerminating ? '關閉中...' : '關閉其他靶機' }}
           </button>
+          <p class="hint-text">關閉後才能在此實驗啟動新靶機</p>
         </div>
+
+        <div v-else-if="instanceStatus === 'current-lab'">
+          <div v-if="instanceUrl === 'creating...'">
+            <p>靶機創建中，請稍候...</p>
+          </div>
+
+          <div v-else class="instance-info">
+            <p class="instance-url">靶機已啟動</p>
+            <button @click="accessInstance">進入靶機</button>
+            <button @click="terminateInstance" :disabled="isTerminating" class="terminate-btn">
+              {{ isTerminating ? '關閉中...' : '關閉靶機' }}
+            </button>
+          </div>
+        </div>
+
         <p v-if="launchError" class="error-message">{{ launchError }}</p>
         <hr />
 
@@ -148,12 +163,12 @@ import { useReflection } from '@/composables/useReflection_B3'
 import { useSolutions } from '@/composables/usesolutions_B2'
 import { useControllInstance } from '@/composables/useControlInstance_B4'
 
-// IE-4 實驗詳情
+// EE-4 顯示實驗詳情
 const route = useRoute()
 const labId = toRef(route.params, 'id') as Ref<string>
 const { lab, isLoading, error } = LabDetail(labId)
 
-// IE-6 提交答案
+// EE-6 提交答案
 const {
   answer,
   isSubmitting: isAnswerSubmitting,
@@ -162,7 +177,7 @@ const {
   submitAnswer,
 } = useSubmit(labId)
 
-// IE-7 防禦表單
+// EE-7 提交防禦表單
 const {
   reflectionForm,
   isSubmitting: isReflectionSubmitting,
@@ -172,7 +187,7 @@ const {
   submitReflection,
 } = useReflection(labId)
 
-// IE-8 解法清單
+// EE-8 顯示他人解法
 const {
   solutions,
   showSolutions,
@@ -181,13 +196,15 @@ const {
   toggleSolutions,
 } = useSolutions(labId)
 
-// 啟動關閉靶機
+// EE-5 啟動靶機 / EE-11 手動關閉靶機
 const {
   instanceUrl,
+  instanceStatus,
+  hasAnyInstance,
+  isCurrentLabActive,
   isLaunching,
-  launchError,
   isTerminating,
-  isPolling,
+  launchError,
   launchInstance,
   terminateInstance,
   accessInstance,

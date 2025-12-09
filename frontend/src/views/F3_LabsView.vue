@@ -1,5 +1,6 @@
 <template>
   <div class="lab-list-page">
+    <!-- EE-3 使用者查看實驗清單 -->
     <h1>實驗列表</h1>
 
     <div v-if="isLoading" class="loading">正在載入實驗列表...</div>

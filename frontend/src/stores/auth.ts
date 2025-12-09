@@ -20,14 +20,14 @@ export const useAuthStore = defineStore('auth', () => {
 
   let isRefreshing = false
   let refreshSubscribers: Array<(token: string) => void> = []
-  
+
   // 驗證使用者 Token 是否有效
   const isAuthenticated = computed(() => {
     if (!accessToken.value || !tokenExp.value) return false
     return tokenExp.value * 1000 > Date.now()
   })
 
-  // 取得加設置使用者請求帶 Token
+  // 取得/設置使用者請求帶 Token
   function setAuthInfo(access: string, refresh?: string, updateUserInfo = true) {
     accessToken.value = access
     localStorage.setItem('accessToken', access)
@@ -187,6 +187,6 @@ export const useAuthStore = defineStore('auth', () => {
     register,
     logout,
     refreshTokenAction,
-    clearLoginError, 
+    clearLoginError,
   }
 })

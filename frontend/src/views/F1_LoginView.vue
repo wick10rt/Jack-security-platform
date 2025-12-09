@@ -63,30 +63,4 @@ const {
   isRegistering,
   handleRegister,
 } = useAuthForm()
-
-import { watch } from 'vue'
-watch(
-  loginError,
-  (newVal, oldVal) => {
-    console.log('loginError 改變:', {
-      from: oldVal,
-      to: newVal,
-      timestamp: new Date().toISOString(),
-    })
-  },
-  { immediate: true },
-)
-
-// 調試用：監控 isLoggingIn 的變化
-watch(
-  isLoggingIn,
-  (newVal, oldVal) => {
-    console.log('isLoggingIn 改變:', {
-      from: oldVal,
-      to: newVal,
-      timestamp: new Date().toISOString(),
-    })
-  },
-  { immediate: true },
-)
 </script>

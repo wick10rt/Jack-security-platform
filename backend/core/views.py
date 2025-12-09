@@ -64,7 +64,7 @@ class MyTokenObtainPairView(TokenObtainPairView):
                 credentials={"username": username},
             )
             return Response(
-                {"detail": "username or password is wrong"},
+                {"detail": "帳號或密碼錯誤"},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
@@ -150,10 +150,10 @@ class ReflectionView(generics.GenericAPIView):
             try:
                 completion = LabCompletion.objects.get(user=user, lab=lab)
                 if completion.status not in ["pending_reflection", "completed"]:
-                    raise ValidationError("error please try again")
+                    raise ValidationError("錯誤狀態，無法提交防禦表單")
             except LabCompletion.DoesNotExist:
                 raise ValidationError(
-                    "you have to submit the correct answer before reflection."
+                    "你要先提交正確答案才能填寫防禦表單"
                 )
 
             instance, created = CommunitySolution.objects.update_or_create(
@@ -189,7 +189,7 @@ class LaunchInstanceView(generics.GenericAPIView):
             # C-3 檢查使用者是否已有運行中的靶機
             if qs.filter(user=user, expires_at__gt=timezone.now()).exists():
                 return Response(
-                    {"error": "you aleady have an active instance"},
+                    {"error": "你已經有一個運行中的靶機了"},
                     status=status.HTTP_409_CONFLICT,
                 )
 
@@ -197,7 +197,7 @@ class LaunchInstanceView(generics.GenericAPIView):
             current_active_count = qs.filter(expires_at__gt=timezone.now()).count()
             if current_active_count >= self.ACTIVEINSTANCE_LIMIT:
                 return Response(
-                    {"error": "service is busy, please try again later"},
+                    {"error": "伺服器忙碌中，請稍後再試"},
                     status=status.HTTP_503_SERVICE_UNAVAILABLE,
                 )
 
@@ -216,7 +216,7 @@ class LaunchInstanceView(generics.GenericAPIView):
             lab_id_str=str(lab.id),
             user_id_str=str(user.id),
         )
-        logger.info(f"create a instance {instance.id} for user {user.username}")
+        logger.info(f"{user.username} 創建 {instance.id}")
 
         serializer = self.get_serializer(instance)
         return Response(serializer.data, status=status.HTTP_202_ACCEPTED)
@@ -232,7 +232,7 @@ class TerminateInstanceView(generics.GenericAPIView):
 
         if not instance:
             return Response(
-                {"message": "No active instance found"},
+                {"message": "沒有找到你的靶機"},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
@@ -243,10 +243,10 @@ class TerminateInstanceView(generics.GenericAPIView):
         terminate_instance_task.delay(instance_id_str, container_id)
 
         instance.delete()
-        logger.info(f"terminate instance {instance_id_str}")
+        logger.info(f"{instance_id_str} 銷毀任務已排程")
 
         return Response(
-            {"message": f"Terminating for instance {instance_id_str}"},
+            {"message": f"正在銷毀 {instance_id_str}"},
             status=status.HTTP_202_ACCEPTED,
         )
 
@@ -260,8 +260,10 @@ class InstanceStatusView(generics.RetrieveAPIView):
 
     def get(self, request, *args, **kwargs):
         instance = self.get_object()
+        
+        # S6 檢查使用者是否為靶機擁有者
         if instance.user != request.user:
-            return Response({"error": "Permission denied"}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"error": "禁止進入"}, status=status.HTTP_403_FORBIDDEN)
         
         return super().get(request, *args, **kwargs)
     
@@ -277,7 +279,7 @@ class AccessInstanceView(generics.GenericAPIView):
         # S6 檢查使用者是否為靶機擁有者
         if instance.user != request.user:
             return Response(
-                {"error": "Permission denied"}, status=status.HTTP_403_FORBIDDEN
+                {"error": "禁止進入"}, status=status.HTTP_403_FORBIDDEN
             )
 
         return Response(
@@ -313,7 +315,7 @@ class SubmitAnswerView(generics.GenericAPIView):
                 return Response(
                     {
                         "status": "already_completed",
-                        "message": "You have already completed this lab.",
+                        "message": "你已經完成過這個實驗了",
                     },
                     status=status.HTTP_200_OK,
                 )
@@ -329,6 +331,6 @@ class SubmitAnswerView(generics.GenericAPIView):
         # 答案錯誤
         else:
             return Response(
-                {"error": "wrong answer please try again"},
+                {"error": "答案錯誤，請再試一次"},
                 status=status.HTTP_400_BAD_REQUEST,
             )

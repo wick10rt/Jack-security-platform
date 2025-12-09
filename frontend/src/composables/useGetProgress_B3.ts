@@ -18,7 +18,7 @@ export function useProgress() {
   // 驗證是否登入
   const fetchProgress = async () => {
     if (!authStore.isAuthenticated) {
-      error.value = '請先去登入'
+      error.value = '請先登入'
       isLoading.value = false
       return
     }

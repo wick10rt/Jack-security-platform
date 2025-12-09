@@ -1,124 +1,108 @@
-import { ref, onUnmounted } from 'vue'
+// src/composables/useControllInstance.ts
+import { computed } from 'vue'
 import axios from '@/axios'
 import type { Ref } from 'vue'
-import { isAxiosError } from 'axios'
-
-interface ErrorResponseData {
-  error?: string
-  detail?: string
-}
-
-interface LaunchResponse {
-  id: string
-  instance_url: string
-}
-
-interface StatusResponse {
-  instance_url: string
-  container_id: string
-}
+import { useToast } from 'vue-toastification'
+import Swal from 'sweetalert2'
+import { useInstanceStore } from '@/stores/instance'
 
 export function useControllInstance(labId: Ref<string>) {
-  const instanceUrl = ref<string | null>(null)
-  const isLaunching = ref(false)
-  const launchError = ref<string | null>(null)
-  const isTerminating = ref(false)
-  const isPolling = ref(false)
-  const pollingInterval = ref<number | undefined>(undefined)
+  const instanceStore = useInstanceStore()
+  const toast = useToast()
 
-  const stopPolling = () => {
-    if (pollingInterval.value) {
-      clearInterval(pollingInterval.value)
-      pollingInterval.value = undefined
-      isPolling.value = false
+  const hasAnyInstance = computed(() => !!instanceStore.activeInstance)
+  const isCurrentLabActive = computed(() => instanceStore.activeInstance?.labId === labId.value)
+  const instanceStatus = computed(() => {
+    if (!hasAnyInstance.value) {
+      return 'no-instance'
     }
-  }
-  onUnmounted(stopPolling)
+    if (isCurrentLabActive.value) {
+      return 'current-lab'
+    }
+    return 'other-lab'
+  })
 
-  const pollInstanceStatus = (instanceId: string) => {
-    isPolling.value = true
-    pollingInterval.value = window.setInterval(async () => {
-      try {
-        const response = await axios.get<StatusResponse>(`/instances/${instanceId}/status/`)
-        const data = response.data
+  const instanceUrl = computed(() => {
+    if (isCurrentLabActive.value) {
+      return instanceStore.activeInstance?.instanceUrl || null
+    }
+    return null
+  })
 
-        if (data.instance_url && data.instance_url !== 'creating...') {
-          stopPolling() // 停止轮询
-          instanceUrl.value = `/instances/${instanceId}/access/`
-          isLaunching.value = false
-        }
-      } catch (error) {
-        stopPolling()
-        launchError.value = '靶機創建失敗，請重試。'
-        isLaunching.value = false
-      }
-    }, 3000)
-  }
+  const isLaunching = computed(() => isCurrentLabActive.value && instanceStore.isLoading)
 
+  // EE-5 啟動靶機
   const launchInstance = async () => {
-    isLaunching.value = true
-    launchError.value = null
-    try {
-      const response = await axios.post(`/labs/${labId.value}/launch/`)
-
-      if (response.status === 202) {
-        const instanceId = response.data.id
-        pollInstanceStatus(instanceId)
-      } else {
-        launchError.value = '靶機創建失敗，請重試。'
-        isLaunching.value = false
-      }
-    } catch (err) {
-      if (isAxiosError<ErrorResponseData>(err) && err.response) {
-        launchError.value =
-          err.response.data.error || err.response.data.detail || `出現錯誤：${err.response.status}`
-      } else {
-        launchError.value = '出現未知錯誤，請重試。'
-        console.error('An unexpected error occurred during launch dispatch:', err)
-      }
-      isLaunching.value = false
-    }
-  }
-
-  const accessInstance = async () => {
-    if (!instanceUrl.value) return
-    try {
-      const response = await axios.get(instanceUrl.value)
-
-      const realUrl = response.data.target_url
-
-      if (realUrl) {
-        window.open(realUrl, '_blank')
-      }
-    } catch (error) {
-      alert('無法訪問靶機，請稍後再試。')
-      console.error('Access instance error:', error)
-    }
-  }
-
-  const terminateInstance = async () => {
-    if (!confirm('確定要關閉當前靶機嗎？')) {
+    if (hasAnyInstance.value && !isCurrentLabActive.value) {
+      toast.warning('你已經有一個靶機在運行了，請先關閉它。')
       return
     }
-    isTerminating.value = true
+
     try {
-      await axios.post('/instances/terminate/')
-      instanceUrl.value = null
-      alert('靶機已成功關閉。')
-    } catch (err) {
-      alert('關閉靶機失敗，請重試。')
-      console.error('An unexpected error occurred during termination:', err)
-    } finally {
-      isTerminating.value = false
+      await instanceStore.launchInstance(labId.value)
+    } catch (err: any) {
+      console.error('Launch instance error:', err)
+    }
+  }
+
+  // EE-11 手動關閉靶機
+  const terminateInstance = async () => {
+    const result = await Swal.fire({
+      title: '確定要關閉靶機嗎？',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: '確定',
+      cancelButtonText: '取消',
+      confirmButtonColor: '#d33',
+    })
+
+    if (result.isConfirmed) {
+      try {
+        await instanceStore.terminateInstance()
+      } catch (err: any) {
+        console.error('Terminate instance error:', err)
+      }
+    }
+  }
+
+  // 進入靶機
+  const accessInstance = async () => {
+    if (!instanceStore.activeInstance) {
+      toast.warning('靶機尚未就緒，請稍候。')
+      return
+    }
+
+    const instanceId = instanceStore.activeInstance.id
+
+    try {
+      const response = await axios.get(`/instances/${instanceId}/access/`)
+      const targetUrl = response.data.target_url
+
+      if (targetUrl) {
+        window.open(targetUrl, '_blank')
+      } else {
+        toast.error('無法獲取靶機 URL')
+      }
+    } catch (error: any) {
+      if (error.response?.status === 403) {
+        toast.error('無權訪問此靶機')
+      } else if (error.response?.status === 404) {
+        toast.error('靶機不存在')
+      } else {
+        toast.error('進入靶機時出現錯誤，請重試')
+      }
+      console.error('無法進入靶機:', error)
     }
   }
 
   return {
     instanceUrl,
+    instanceStatus,
+    hasAnyInstance,
+    isCurrentLabActive,
     isLaunching,
-    launchError,
-    isTerminating,
-    isPolling,
+    isTerminating: computed(() => instanceStore.isLoading),
+    launchError: computed(() => instanceStore.error),
     launchInstance,
     terminateInstance,
     accessInstance,

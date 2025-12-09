@@ -1,5 +1,6 @@
 <template>
   <div class="dashboard">
+    <!-- EE-2 使用者查看學習進度 -->
     <h1>你的學習進度</h1>
 
     <div v-if="isLoading">

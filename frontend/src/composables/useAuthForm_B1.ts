@@ -3,6 +3,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { storeToRefs } from 'pinia'
 import { isAxiosError } from 'axios'
+import { useToast } from 'vue-toastification'
 
 const ADMIN_ACCESS_KEY = import.meta.env.VITE_ADMIN_ACCESS_KEY ?? ''
 const ADMIN_URL = import.meta.env.VITE_ADMIN_URL ?? 'http://127.0.0.1:8000/admin/'
@@ -10,10 +11,9 @@ const ADMIN_URL = import.meta.env.VITE_ADMIN_URL ?? 'http://127.0.0.1:8000/admin
 export function useAuthForm() {
   const authStore = useAuthStore()
   const router = useRouter()
-
   const { isLoggingIn, loginError } = storeToRefs(authStore)
-
   const isRegisterMode = ref(false)
+  const toast = useToast()
 
   // 登入/註冊切換
   const toggleMode = () => {
@@ -51,7 +51,7 @@ export function useAuthForm() {
 
     try {
       await authStore.register(registerForm.username, registerForm.password)
-      alert('註冊成功！請登入')
+      toast.success('註冊成功')
       toggleMode()
     } catch (error) {
       if (isAxiosError(error) && error.response) {
@@ -82,7 +82,7 @@ export function useAuthForm() {
     if (isLoggingIn.value) return
 
     const redirectUrl = await authStore.login(loginForm.username, loginForm.password)
-    
+
     // 根據後端回傳的 redirect_url 進行導向
     if (redirectUrl) {
       if (redirectUrl === '/admin/') {
