@@ -1,4 +1,3 @@
-// src/composables/useControllInstance.ts
 import { computed } from 'vue'
 import axios from '@/axios'
 import type { Ref } from 'vue'
@@ -53,7 +52,7 @@ export function useControllInstance(labId: Ref<string>) {
       showCancelButton: true,
       confirmButtonText: '確定',
       cancelButtonText: '取消',
-      confirmButtonColor: '#d33',
+      confirmButtonColor: '#7e370eff',
     })
 
     if (result.isConfirmed) {
