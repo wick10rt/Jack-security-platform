@@ -137,6 +137,23 @@ class ReflectionView(generics.GenericAPIView):
     serializer_class = ReflectionSerializer
     permission_classes = [IsAuthenticated]
 
+    # 獲取已提交的防禦表單內容
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        lab_id = self.kwargs.get("id")
+        lab = get_object_or_404(Lab, id=lab_id)
+
+        try:
+            # 尋找使用者在此實驗的防禦表單
+            solution = CommunitySolution.objects.get(user=user, lab=lab)
+            serializer = self.get_serializer(solution)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except CommunitySolution.DoesNotExist:
+            return Response(
+                {"detail": "尚未提交防禦表單"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
     def post(self, request, *args, **kwargs):
         user = request.user
         lab_id = self.kwargs.get("id")

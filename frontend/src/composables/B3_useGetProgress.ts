@@ -7,6 +7,8 @@ interface LabCompletion {
   status: 'pending_reflection' | 'completed'
   user: string
   lab: string
+  lab_id: string
+  lab_title: string
 }
 
 export function useProgress() {
@@ -30,6 +32,7 @@ export function useProgress() {
     try {
       const response = await axios.get<LabCompletion[]>('/progress/')
       completions.value = response.data
+      console.log('Progress data:', response.data)
     } catch (err) {
       error.value = '獲取使用者資料失敗，請重試'
       console.error(err)

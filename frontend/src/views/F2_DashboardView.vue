@@ -2,7 +2,7 @@
   <div class="dashboard">
     <div class="dashboard-header fade-in-down">
       <h1 class="dashboard-title">你的學習進度</h1>
-      <p class="dashboard-subtitle">記錄你在張胖胖平台的每一步成長</p>
+      <p class="dashboard-subtitle">記錄你在張胖胖平台的每一步</p>
     </div>
 
     <!-- EE-2 使用者查看學習進度 -->
@@ -52,7 +52,7 @@
               <span v-else>◷</span>
             </div>
             <div class="completion-info">
-              <strong class="completion-title">{{ completion.lab }}</strong>
+              <strong class="completion-title">{{ completion.lab_title }}</strong>
               <span 
                 class="completion-status"
                 :class="completion.status"
@@ -66,9 +66,8 @@
 
       <!-- 沒有數據狀態 -->
       <div v-else class="empty-state fade-in-up">
-        <div class="empty-icon">📚</div>
         <p class="empty-text">這裡空空如也!!!</p>
-        <p class="empty-hint">開始你的學習之旅吧</p>
+        <p class="empty-hint">開始你跟張胖胖的學習之旅吧</p>
       </div>
     </div>
 
@@ -90,6 +89,7 @@ import { useProgress } from '@/composables/B3_useGetProgress'
 
 const { completions, isLoading, error } = useProgress()
 </script>
+
 
 <style scoped>
 .dashboard {

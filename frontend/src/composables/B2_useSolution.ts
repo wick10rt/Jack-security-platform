@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import axios from '@/axios'
 import type { Ref } from 'vue'
 
@@ -8,7 +8,7 @@ interface Solution {
 }
 
 // EE-8 使用者查看其他人的解法
-export function useSolutions(labId: Ref<string>) {
+export function useSolutions(labId: Ref<string>, submissionStatus: Ref<string>) {
   const solutions = ref<Solution[]>([])
   const showSolutions = ref(false)
   const isLoading = ref(false)
@@ -34,6 +34,19 @@ export function useSolutions(labId: Ref<string>) {
       fetchSolutions()
     }
   }
+
+  watch(
+    () => submissionStatus.value,
+    (status) => {
+      if (status === 'already_completed') {
+        showSolutions.value = false
+        if (solutions.value.length === 0) {
+          fetchSolutions()
+        }
+      }
+    },
+    { immediate: true }
+  )
 
   return {
     solutions,

@@ -31,10 +31,28 @@
             type="password" 
             required 
             placeholder="請輸入密碼"
+            @input="checkPasswordMatch"
           />
           <div v-if="registerErrors.password" class="error-list">
             <p v-for="error in registerErrors.password" :key="error" class="error-item">
               {{ error }}
+            </p>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="reg-password-confirm">確認密碼</label>
+          <input 
+            id="reg-password-confirm" 
+            v-model="registerForm.passwordConfirm" 
+            type="password" 
+            required 
+            placeholder="請再次輸入密碼"
+            @input="checkPasswordMatch"
+          />
+          <div v-if="passwordMismatch" class="error-list">
+            <p class="error-item">
+              兩次輸入的密碼不一樣
             </p>
           </div>
         </div>
@@ -45,7 +63,11 @@
           </p>
         </div>
 
-        <button type="submit" class="btn submit-btn" :disabled="isRegistering">
+        <button 
+          type="submit" 
+          class="btn submit-btn" 
+          :disabled="isRegistering || passwordMismatch"
+        >
           <span v-if="isRegistering" class="btn-loading">
             <span class="spinner-small"></span>
             註冊中...
@@ -119,6 +141,8 @@ const {
   registerErrors,
   isRegistering,
   handleRegister,
+  passwordMismatch,
+  checkPasswordMatch,
 } = useAuthForm()
 </script>
 
@@ -316,6 +340,63 @@ const {
 .link-accent:hover {
   border-bottom-color: var(--accent);
   opacity: 1;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.8s ease;
+}
+
+.fade-in {
+  animation: fadeIn 0.6s ease;
 }
 
 @media (max-width: 480px) {

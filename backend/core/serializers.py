@@ -69,12 +69,17 @@ class CommunitySolutionSerializer(serializers.ModelSerializer):
 
 # IE-2 學習進度
 class LabCompletionSerializer(serializers.ModelSerializer):
-    lab = serializers.StringRelatedField(read_only=True)
-    user = serializers.StringRelatedField(read_only=True)
-
+    lab_id = serializers.PrimaryKeyRelatedField(source='lab', read_only=True)
+    lab_title = serializers.CharField(source='lab.title', read_only=True)
+    
     class Meta:
         model = LabCompletion
-        fields = ["id", "status", "user", "lab"]
+        fields = ["id", "status", "user", "lab_id", "lab_title"]
+        
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['lab'] = str(instance.lab.id)
+        return data
 
 
 # IE-7 防禦表單

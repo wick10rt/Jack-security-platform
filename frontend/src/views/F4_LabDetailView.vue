@@ -19,7 +19,6 @@
 
     <!-- 實驗內容 -->
     <article v-if="lab && !isLoading" class="lab-article fade-in-up">
-      <!-- 實驗標題區 -->
       <header class="lab-header">
         <h1 class="lab-title">{{ lab.title }}</h1>
         <p class="lab-category">
@@ -30,17 +29,13 @@
 
       <!-- 實驗說明 -->
       <section class="description-section card">
-        <h2 class="section-title">
-          <span class="section-icon">📖</span>
-          實驗說明
-        </h2>
+        <h2 class="section-title">實驗說明</h2>
         <div class="description-content" v-html="lab.description"></div>
       </section>
 
-      <!-- 靶機控制區 -->
+      <!-- 靶機管理-->
       <section class="actions-section card">
         <h2 class="section-title">
-          <span class="section-icon">🎯</span>
           靶機管理
         </h2>
 
@@ -56,7 +51,6 @@
               靶機創建中...
             </span>
             <span v-else>
-              <span class="btn-icon">🚀</span>
               啟動靶機
             </span>
           </button>
@@ -65,7 +59,6 @@
         <!-- 有其他實驗的靶機在運行 -->
         <div v-else-if="instanceStatus === 'other-lab'" class="other-instance-block">
           <div class="warning-box">
-            <div class="warning-icon">⚡</div>
             <p class="warning-message">你在其他實驗中有一個靶機正在運行</p>
             <p class="hint-text">關閉後才能在此實驗啟動新靶機</p>
           </div>
@@ -79,7 +72,6 @@
               關閉中...
             </span>
             <span v-else>
-              <span class="btn-icon">🛑</span>
               關閉其他靶機
             </span>
           </button>
@@ -95,7 +87,7 @@
           <div v-else class="instance-active-block">
             <div class="success-box">
               <div class="success-icon">✓</div>
-              <p class="instance-url">靶機已啟動並準備就緒</p>
+              <p class="instance-url">靶機已準備就緒</p>
             </div>
             <div class="instance-actions">
               <button @click="accessInstance" class="btn btn-primary access-btn">
@@ -112,7 +104,6 @@
                   關閉中...
                 </span>
                 <span v-else>
-                  <span class="btn-icon">🛑</span>
                   關閉靶機
                 </span>
               </button>
@@ -121,41 +112,46 @@
         </div>
 
         <p v-if="launchError" class="error-message fade-in">{{ launchError }}</p>
+      </section>
 
-        <!-- 分隔線 -->
-        <div class="divider"></div>
+      <!-- EE-6 提交答案-->
+      <section 
+        v-if="!isLoadingStatus && submissionStatus !== 'pending_reflection' && submissionStatus !== 'already_completed'"
+        class="answer-section card"
+      >
+        <h2 class="section-title">
+          提交答案
+        </h2>
 
-        <!-- 提交答案 EE-6 -->
-        <div
-          v-if="submissionStatus !== 'pending_reflection' && submissionStatus !== 'already_completed'"
-          class="answer-submission"
-        >
-          <h3 class="subsection-title">
-            <span class="subsection-icon">✍️</span>
-            提交答案
-          </h3>
-          <form @submit.prevent="submitAnswer" class="submission-form">
-            <div class="form-group">
-              <input
-                v-model="answer"
-                type="text"
-                placeholder="在這邊提交答案"
-                :disabled="isAnswerSubmitting"
-                required
-              />
-            </div>
-            <button type="submit" :disabled="isAnswerSubmitting" class="btn btn-primary">
-              <span v-if="isAnswerSubmitting" class="btn-loading">
-                <span class="spinner-small"></span>
-                提交中...
-              </span>
-              <span v-else>提交答案</span>
-            </button>
-          </form>
-
-          <div v-if="answerError" class="error-message fade-in">
-            {{ answerError }}
+        <form @submit.prevent="submitAnswer" class="submission-form">
+          <div class="form-group">
+            <input
+              v-model="answer"
+              type="text"
+              placeholder="在這邊提交答案"
+              :disabled="isAnswerSubmitting"
+              required
+            />
           </div>
+          <button type="submit" :disabled="isAnswerSubmitting" class="btn btn-primary">
+            <span v-if="isAnswerSubmitting" class="btn-loading">
+              <span class="spinner-small"></span>
+              提交中...
+            </span>
+            <span v-else>提交答案</span>
+          </button>
+        </form>
+
+        <div v-if="answerError" class="error-message fade-in">
+          {{ answerError }}
+        </div>
+      </section>
+
+      <!-- 狀態載入中 -->
+      <section v-if="isLoadingStatus" class="loading-section card">
+        <div class="loading-inline">
+          <div class="spinner-small"></div>
+          <span>正在檢查實驗狀態...</span>
         </div>
       </section>
 
@@ -177,14 +173,13 @@
         <form @submit.prevent="submitReflection" v-else class="reflection-form">
           <div class="form-group">
             <label for="payload">
-              <span class="label-icon">💻</span>
-              你使用的 Payload
+              你是怎麼取得實驗答案的?
             </label>
             <input
               id="payload"
               v-model="reflectionForm.payload"
               type="text"
-              placeholder="填入你使用的 Payload"
+              placeholder="填入你的做法"
               :disabled="isReflectionSubmitting"
               required
             />
@@ -192,7 +187,6 @@
 
           <div class="form-group">
             <label for="reflection">
-              <span class="label-icon">💭</span>
               防禦省思
             </label>
             <textarea
@@ -225,15 +219,15 @@
         class="completed-section card"
       >
         <div class="celebration-box">
-          <div class="celebration-icon">🎉</div>
-          <div class="completed-message">恭喜！你已成功完成了這個實驗！</div>
+          <img src="../assets/success.jpg" alt="成功完成實驗" class="success-image">
+          <div class="completed-message">恭喜！你完成了這個實驗！</div>
           <div class="completed-hint">想要修改防禦表單內容，只需再填一次表單即可</div>
         </div>
 
-        <!-- 查看他人解法 EE-8 -->
+        <!-- EE-8 查看他人解法-->
         <div class="solutions-section">
           <button @click="toggleSolutions" class="solutions-toggle-btn btn btn-secondary">
-            <span class="btn-icon">{{ showSolutions ? '👁️' : '👀' }}</span>
+            <span class="btn-icon">{{ showSolutions ? '' : '' }}</span>
             {{ showSolutions ? '隱藏他人解法' : '查看他人解法' }}
           </button>
 
@@ -259,14 +253,12 @@
                 <div class="solution-content">
                   <div class="solution-payload">
                     <p class="solution-label">
-                      <span class="label-icon">💻</span>
                       Payload
                     </p>
                     <pre><code>{{ solution.payload }}</code></pre>
                   </div>
                   <div class="solution-reflection">
                     <p class="solution-label">
-                      <span class="label-icon">💭</span>
                       防禦省思
                     </p>
                     <p class="reflection-text">{{ solution.reflection }}</p>
@@ -276,7 +268,6 @@
             </ul>
 
             <div v-else-if="!solutionsLoading && !solutionsError" class="empty-solutions">
-              <div class="empty-icon">📭</div>
               <p>這邊空空如也!!!</p>
             </div>
           </div>
@@ -287,12 +278,12 @@
 </template>
 
 <script setup lang="ts">
-import { toRef, watch, type Ref, onMounted } from 'vue'
+import { toRef, type Ref } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { LabDetail } from '@/composables/B2_useGetDetail'
 import { useSubmit } from '@/composables/B5_useSubmit'
 import { useReflection } from '@/composables/B3_useReflection'
-import { useSolutions } from '@/composables/B2_usesolutions'
+import { useSolutions } from '@/composables/B2_useSolution'
 import { useControllInstance } from '@/composables/B4_useControlInstance'
 
 // EE-4 顯示實驗詳情
@@ -306,6 +297,7 @@ const {
   isSubmitting: isAnswerSubmitting,
   submissionError: answerError,
   submissionStatus,
+  isLoadingStatus,
   submitAnswer,
 } = useSubmit(labId)
 
@@ -317,7 +309,7 @@ const {
   submissionSuccess,
   isLoading: isReflectionLoading,
   submitReflection,
-} = useReflection(labId)
+} = useReflection(labId, submissionStatus)
 
 // EE-8 顯示他人解法
 const {
@@ -326,7 +318,7 @@ const {
   isLoading: solutionsLoading,
   error: solutionsError,
   toggleSolutions,
-} = useSolutions(labId)
+} = useSolutions(labId, submissionStatus)
 
 // EE-5 啟動靶機 / EE-11 手動關閉靶機
 const {
@@ -722,6 +714,27 @@ const {
   border-radius: var(--radius-sm);
   margin-bottom: 2rem;
   border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+
+.success-image {
+  max-width: 100%;
+  height: auto;
+  max-height: 400px;
+  width: auto;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  margin-bottom: 1.5rem;
+  object-fit: contain;
+  animation: fadeInScale 0.8s ease;
+  border: 3px solid var(--primary);
+  transition: var(--transition);
+}
+
+.success-image:hover {
+  transform: scale(1.02);
+  box-shadow: var(--shadow-lg);
 }
 
 .celebration-icon {
@@ -924,6 +937,15 @@ const {
     padding: 1.25rem;
   }
 
+  .celebration-box {
+    padding: 1.5rem 1rem;
+  }
+
+  .success-image {
+    max-height: 250px;
+    border-width: 2px;
+  }
+
   .celebration-icon {
     font-size: 3rem;
   }
@@ -990,6 +1012,17 @@ const {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 

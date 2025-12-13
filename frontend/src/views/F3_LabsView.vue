@@ -1,9 +1,9 @@
 <template>
   <div class="lab-list-page">
-    <!-- EE-3 使用者查看實驗清單 -->
+
     <div class="page-header fade-in-down">
       <h1 class="page-title">實驗列表</h1>
-      <p class="page-subtitle">探索資安世界的優雅旅程</p>
+      <p class="page-subtitle">來跟張胖胖一起學習</p>
     </div>
 
     <!-- 載入狀態 -->
@@ -18,9 +18,8 @@
       <p class="error-text">{{ error }}</p>
     </div>
 
-    <!-- 實驗列表 -->
+    <!-- EE-3 使用者查看實驗清單 -->
     <div v-if="!isLoading && !error" class="lab-content">
-      <!-- 有實驗數據 -->
       <div v-if="labs.length > 0" class="lab-grid">
         <div 
           v-for="(lab, index) in labs" 
@@ -52,10 +51,10 @@
         </div>
       </div>
 
-      <!-- 空狀態 -->
+      <!-- 沒有資料狀態 -->
       <div v-else class="empty-state fade-in-up">
         <p class="empty-text">目前沒有可用的實驗</p>
-        <p class="empty-hint">敬請期待更多精彩內容</p>
+        <p class="empty-hint">敬請期待張胖胖增加更多精彩內容</p>
       </div>
     </div>
   </div>

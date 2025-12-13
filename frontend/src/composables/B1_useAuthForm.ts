@@ -1,4 +1,4 @@
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { storeToRefs } from 'pinia'
@@ -18,33 +18,53 @@ export function useAuthForm() {
   // 登入/註冊切換
   const toggleMode = () => {
     isRegisterMode.value = !isRegisterMode.value
-
     authStore.clearLoginError()
-
     Object.keys(registerErrors).forEach(
       (key) => delete registerErrors[key as keyof typeof registerErrors],
     )
-
     loginForm.username = ''
     loginForm.password = ''
     registerForm.username = ''
     registerForm.password = ''
+    registerForm.passwordConfirm = ''
   }
 
   // EE-0 使用者註冊
-  const registerForm = reactive({ username: '', password: '' })
+  const registerForm = reactive({ 
+    username: '', 
+    password: '',
+    passwordConfirm: '' 
+  })
+  
   const registerErrors = reactive<{
     username?: string[]
     password?: string[]
     non_field_errors?: string[]
   }>({})
+  
   const isRegistering = ref(false)
+
+  // 檢查密碼是否一致
+  const passwordMismatch = computed(() => {
+    if (registerForm.password && registerForm.passwordConfirm) {
+      return registerForm.password !== registerForm.passwordConfirm
+    }
+    return false
+  })
+
+  const checkPasswordMatch = () => {
+  }
 
   const handleRegister = async () => {
     if (isRegistering.value) return
 
-    isRegistering.value = true
+    // 確認密碼是否一致
+    if (passwordMismatch.value) {
+      toast.error('兩次輸入的密碼不一樣')
+      return
+    }
 
+    isRegistering.value = true
     Object.keys(registerErrors).forEach(
       (key) => delete registerErrors[key as keyof typeof registerErrors],
     )
@@ -56,7 +76,6 @@ export function useAuthForm() {
     } catch (error) {
       if (isAxiosError(error) && error.response) {
         const data = error.response.data
-
         if (error.response.status === 400 && typeof data === 'object' && data !== null) {
           Object.assign(registerErrors, data as Record<string, string[]>)
         } else {
@@ -80,7 +99,6 @@ export function useAuthForm() {
 
   const handleLogin = async () => {
     if (isLoggingIn.value) return
-
     const redirectUrl = await authStore.login(loginForm.username, loginForm.password)
 
     // 根據後端回傳的 redirect_url 進行導向
@@ -110,5 +128,7 @@ export function useAuthForm() {
     registerErrors,
     isRegistering,
     handleRegister,
+    passwordMismatch,
+    checkPasswordMatch,
   }
 }

@@ -1,7 +1,8 @@
-import { ref, reactive } from 'vue'
+import { ref, reactive, watch } from 'vue'
 import myaxios from '@/axios'
 import type { Ref } from 'vue'
 import axios from 'axios'
+
 interface ReflectionResponse {
   id: string
   user: string
@@ -10,16 +11,46 @@ interface ReflectionResponse {
   reflection: string
 }
 
-export function useReflection(labId: Ref<string>) {
+export function useReflection(labId: Ref<string>, submissionStatus: Ref<string>) {
   const reflectionForm = reactive({
     reflection: '',
     payload: '',
   })
-
+  
   const isSubmitting = ref(false)
   const submissionError = ref<string | null>(null)
   const submissionSuccess = ref(false)
   const isLoading = ref(false)
+
+  // 獲取已存在的防禦表單內容
+  const fetchReflection = async () => {
+    isLoading.value = true
+    try {
+      const response = await myaxios.get<ReflectionResponse>(`/labs/${labId.value}/reflection/`)
+      
+      // 如果有已存在的內容，填入表單
+      if (response.data) {
+        reflectionForm.payload = response.data.payload
+        reflectionForm.reflection = response.data.reflection
+      }
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status !== 404) {
+        console.error('獲取防禦表單失敗:', err)
+      }
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  watch(
+    () => submissionStatus.value,
+    (status) => {
+      if (status === 'pending_reflection' || status === 'already_completed') {
+        fetchReflection()
+      }
+    },
+    { immediate: true }
+  )
 
   // EE-7 使用者提交表單
   const submitReflection = async () => {
@@ -53,5 +84,6 @@ export function useReflection(labId: Ref<string>) {
     submissionSuccess,
     isLoading,
     submitReflection,
+    fetchReflection,
   }
 }
