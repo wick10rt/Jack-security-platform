@@ -35,14 +35,12 @@
 
       <!-- 靶機管理-->
       <section class="actions-section card">
-        <h2 class="section-title">
-          靶機管理
-        </h2>
+        <h2 class="section-title">靶機管理</h2>
 
         <!-- EE-5 啟動靶機 -->
         <div v-if="instanceStatus === 'no-instance'" class="action-block">
-          <button 
-            @click="launchInstance" 
+          <button
+            @click="launchInstance"
             :disabled="isLaunching"
             class="btn btn-primary launch-btn"
           >
@@ -50,9 +48,7 @@
               <span class="spinner-small"></span>
               靶機創建中...
             </span>
-            <span v-else>
-              啟動靶機
-            </span>
+            <span v-else> 啟動靶機 </span>
           </button>
         </div>
 
@@ -62,18 +58,16 @@
             <p class="warning-message">你在其他實驗中有一個靶機正在運行</p>
             <p class="hint-text">關閉後才能在此實驗啟動新靶機</p>
           </div>
-          <button 
-            @click="terminateInstance" 
-            :disabled="isTerminating" 
+          <button
+            @click="terminateInstance"
+            :disabled="isTerminating"
             class="btn btn-secondary terminate-btn"
           >
             <span v-if="isTerminating" class="btn-loading">
               <span class="spinner-small"></span>
               關閉中...
             </span>
-            <span v-else>
-              關閉其他靶機
-            </span>
+            <span v-else> 關閉其他靶機 </span>
           </button>
         </div>
 
@@ -94,18 +88,16 @@
                 <span class="btn-icon">→</span>
                 進入靶機
               </button>
-              <button 
-                @click="terminateInstance" 
-                :disabled="isTerminating" 
+              <button
+                @click="terminateInstance"
+                :disabled="isTerminating"
                 class="btn btn-secondary terminate-btn"
               >
                 <span v-if="isTerminating" class="btn-loading">
                   <span class="spinner-small"></span>
                   關閉中...
                 </span>
-                <span v-else>
-                  關閉靶機
-                </span>
+                <span v-else> 關閉靶機 </span>
               </button>
             </div>
           </div>
@@ -115,13 +107,15 @@
       </section>
 
       <!-- EE-6 提交答案-->
-      <section 
-        v-if="!isLoadingStatus && submissionStatus !== 'pending_reflection' && submissionStatus !== 'already_completed'"
+      <section
+        v-if="
+          !isLoadingStatus &&
+          submissionStatus !== 'pending_reflection' &&
+          submissionStatus !== 'already_completed'
+        "
         class="answer-section card"
       >
-        <h2 class="section-title">
-          提交答案
-        </h2>
+        <h2 class="section-title">提交答案</h2>
 
         <form @submit.prevent="submitAnswer" class="submission-form">
           <div class="form-group">
@@ -160,10 +154,7 @@
         v-if="submissionStatus === 'pending_reflection' || submissionStatus === 'already_completed'"
         class="reflection-section card"
       >
-        <h2 class="section-title">
-          <span class="section-icon">🛡️</span>
-          你的防禦表單
-        </h2>
+        <h2 class="section-title">你的防禦表單</h2>
 
         <div v-if="isReflectionLoading" class="loading-inline">
           <div class="spinner-small"></div>
@@ -172,9 +163,7 @@
 
         <form @submit.prevent="submitReflection" v-else class="reflection-form">
           <div class="form-group">
-            <label for="payload">
-              你是怎麼取得實驗答案的?
-            </label>
+            <label for="payload"> 你是怎麼取得實驗答案的? </label>
             <input
               id="payload"
               v-model="reflectionForm.payload"
@@ -186,9 +175,7 @@
           </div>
 
           <div class="form-group">
-            <label for="reflection">
-              防禦省思
-            </label>
+            <label for="reflection"> 防禦省思 </label>
             <textarea
               id="reflection"
               v-model="reflectionForm.reflection"
@@ -219,7 +206,7 @@
         class="completed-section card"
       >
         <div class="celebration-box">
-          <img src="../assets/success.jpg" alt="成功完成實驗" class="success-image">
+          <img src="../assets/success.jpg" alt="成功完成實驗" class="success-image" />
           <div class="completed-message">恭喜！你完成了這個實驗！</div>
           <div class="completed-hint">想要修改防禦表單內容，只需再填一次表單即可</div>
         </div>
@@ -232,10 +219,7 @@
           </button>
 
           <div v-if="showSolutions" class="solutions-content fade-in-up">
-            <h3 class="solutions-title">
-              <span class="solutions-icon">💡</span>
-              其他人怎麼做的
-            </h3>
+            <h3 class="solutions-title">其他人怎麼做的</h3>
 
             <div v-if="solutionsLoading" class="loading-inline">
               <div class="spinner-small"></div>
@@ -252,15 +236,11 @@
                 </div>
                 <div class="solution-content">
                   <div class="solution-payload">
-                    <p class="solution-label">
-                      Payload
-                    </p>
+                    <p class="solution-label">我是這樣取得答案的</p>
                     <pre><code>{{ solution.payload }}</code></pre>
                   </div>
                   <div class="solution-reflection">
-                    <p class="solution-label">
-                      防禦省思
-                    </p>
+                    <p class="solution-label">我覺得可以這樣做來抵禦攻擊</p>
                     <p class="reflection-text">{{ solution.reflection }}</p>
                   </div>
                 </div>
@@ -969,7 +949,8 @@ const {
 }
 
 @keyframes float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0px);
   }
   50% {
@@ -978,7 +959,8 @@ const {
 }
 
 @keyframes bounce {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0);
   }
   50% {

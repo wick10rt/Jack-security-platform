@@ -38,7 +38,7 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         token["username"] = user.username
         token["is_admin"] = user.is_staff
         return token
-    
+
 
 # B2 實驗內容服務
 
@@ -69,16 +69,16 @@ class CommunitySolutionSerializer(serializers.ModelSerializer):
 
 # IE-2 學習進度
 class LabCompletionSerializer(serializers.ModelSerializer):
-    lab_id = serializers.PrimaryKeyRelatedField(source='lab', read_only=True)
-    lab_title = serializers.CharField(source='lab.title', read_only=True)
-    
+    lab_id = serializers.PrimaryKeyRelatedField(source="lab", read_only=True)
+    lab_title = serializers.CharField(source="lab.title", read_only=True)
+
     class Meta:
         model = LabCompletion
         fields = ["id", "status", "user", "lab_id", "lab_title"]
-        
+
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        data['lab'] = str(instance.lab.id)
+        data["lab"] = str(instance.lab.id)
         return data
 
 

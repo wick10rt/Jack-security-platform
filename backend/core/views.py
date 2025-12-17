@@ -46,7 +46,7 @@ class UserRegisterView(generics.CreateAPIView):
 
 
 # EE-1/EE-9 使用者/管理員登入
-@method_decorator(axes_dispatch, name="dispatch")   # S2 axes 暴力破解防護
+@method_decorator(axes_dispatch, name="dispatch")  # S2 axes 暴力破解防護
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
 
@@ -150,8 +150,7 @@ class ReflectionView(generics.GenericAPIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         except CommunitySolution.DoesNotExist:
             return Response(
-                {"detail": "尚未提交防禦表單"},
-                status=status.HTTP_404_NOT_FOUND
+                {"detail": "尚未提交防禦表單"}, status=status.HTTP_404_NOT_FOUND
             )
 
     def post(self, request, *args, **kwargs):
@@ -169,9 +168,7 @@ class ReflectionView(generics.GenericAPIView):
                 if completion.status not in ["pending_reflection", "completed"]:
                     raise ValidationError("錯誤狀態，無法提交防禦表單")
             except LabCompletion.DoesNotExist:
-                raise ValidationError(
-                    "你要先提交正確答案才能填寫防禦表單"
-                )
+                raise ValidationError("你要先提交正確答案才能填寫防禦表單")
 
             instance, created = CommunitySolution.objects.update_or_create(
                 user=user, lab=lab, defaults=serializer.validated_data
@@ -193,7 +190,7 @@ class ReflectionView(generics.GenericAPIView):
 class LaunchInstanceView(generics.GenericAPIView):
     serializer_class = ActiveInstanceSerializer
     permission_classes = [IsAuthenticated]
-    ACTIVEINSTANCE_LIMIT = 30   # C-9 靶機數量上限
+    ACTIVEINSTANCE_LIMIT = 30  # C-9 靶機數量上限
 
     def post(self, request, *args, **kwargs):
         lab_id = self.kwargs.get("id")
@@ -218,7 +215,9 @@ class LaunchInstanceView(generics.GenericAPIView):
                     status=status.HTTP_503_SERVICE_UNAVAILABLE,
                 )
 
-            expires_at = timezone.now() + timedelta(minutes=30)    # C-4 靶機有效期限30分鐘
+            expires_at = timezone.now() + timedelta(
+                minutes=30
+            )  # C-4 靶機有效期限30分鐘
             instance = ActiveInstance.objects.create(
                 user=user,
                 lab=lab,
@@ -273,17 +272,17 @@ class InstanceStatusView(generics.RetrieveAPIView):
     permission_classes = [IsAuthenticated]
     queryset = ActiveInstance.objects.all()
     serializer_class = ActiveInstanceSerializer
-    lookup_field = 'id'
+    lookup_field = "id"
 
     def get(self, request, *args, **kwargs):
         instance = self.get_object()
-        
+
         # S6 檢查使用者是否為靶機擁有者
         if instance.user != request.user:
             return Response({"error": "禁止進入"}, status=status.HTTP_403_FORBIDDEN)
-        
+
         return super().get(request, *args, **kwargs)
-    
+
 
 # 取得靶機地址
 class AccessInstanceView(generics.GenericAPIView):
@@ -295,15 +294,13 @@ class AccessInstanceView(generics.GenericAPIView):
 
         # S6 檢查使用者是否為靶機擁有者
         if instance.user != request.user:
-            return Response(
-                {"error": "禁止進入"}, status=status.HTTP_403_FORBIDDEN
-            )
+            return Response({"error": "禁止進入"}, status=status.HTTP_403_FORBIDDEN)
 
         return Response(
             {"target_url": instance.instance_url}, status=status.HTTP_200_OK
         )
-    
-    
+
+
 # B5 答案驗證服務
 
 

@@ -16,7 +16,7 @@ export function useReflection(labId: Ref<string>, submissionStatus: Ref<string>)
     reflection: '',
     payload: '',
   })
-  
+
   const isSubmitting = ref(false)
   const submissionError = ref<string | null>(null)
   const submissionSuccess = ref(false)
@@ -27,7 +27,7 @@ export function useReflection(labId: Ref<string>, submissionStatus: Ref<string>)
     isLoading.value = true
     try {
       const response = await myaxios.get<ReflectionResponse>(`/labs/${labId.value}/reflection/`)
-      
+
       // 如果有已存在的內容，填入表單
       if (response.data) {
         reflectionForm.payload = response.data.payload

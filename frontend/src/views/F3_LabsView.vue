@@ -1,6 +1,5 @@
 <template>
   <div class="lab-list-page">
-
     <div class="page-header fade-in-down">
       <h1 class="page-title">實驗列表</h1>
       <p class="page-subtitle">來跟張胖胖一起學習</p>
@@ -21,25 +20,22 @@
     <!-- EE-3 使用者查看實驗清單 -->
     <div v-if="!isLoading && !error" class="lab-content">
       <div v-if="labs.length > 0" class="lab-grid">
-        <div 
-          v-for="(lab, index) in labs" 
-          :key="lab.id" 
+        <div
+          v-for="(lab, index) in labs"
+          :key="lab.id"
           class="lab-card fade-in-up hover-lift"
           :style="{ animationDelay: `${index * 0.1}s` }"
         >
           <div class="lab-card-header">
             <span class="lab-category">{{ lab.category }}</span>
           </div>
-          
+
           <div class="lab-card-body">
             <h3 class="lab-title">{{ lab.title }}</h3>
           </div>
 
           <div class="lab-card-footer">
-            <RouterLink 
-              :to="{ name: 'lab-detail', params: { id: lab.id } }"
-              class="lab-link"
-            >
+            <RouterLink :to="{ name: 'lab-detail', params: { id: lab.id } }" class="lab-link">
               <button class="btn btn-primary lab-btn">
                 <span>進入實驗</span>
                 <span class="lab-btn-icon">→</span>
@@ -165,12 +161,7 @@ const { labs, isLoading, error } = getLabList()
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(212, 181, 160, 0.15),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, rgba(212, 181, 160, 0.15), transparent);
   transition: left 0.6s ease;
   pointer-events: none;
 }
@@ -288,7 +279,8 @@ const { labs, isLoading, error } = getLabList()
 }
 
 @keyframes float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0px);
   }
   50% {

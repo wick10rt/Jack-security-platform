@@ -29,7 +29,6 @@ def launch_instance_task(instance_id_str, lab_id_str, user_id_str):
         ActiveInstance.objects.filter(id=instance_id).delete()
         return
 
-
     # 建立 docker-compose.yml
     compose_dir = (settings.BASE_DIR.parent / "instances").resolve()
     compose_file_path = compose_dir / f"docker-compose-{instance_id}.yml"
@@ -100,8 +99,8 @@ services:
             text=True,
         )
         host_port = port_result.stdout.strip().split(":")[-1]
-        instance_url = f"http://127.0.0.1:{host_port}"     
-        
+        instance_url = f"http://127.0.0.1:{host_port}"
+
         ps_result = subprocess.run(
             [
                 "docker-compose",
@@ -207,4 +206,3 @@ def cleanup_expired_instances():
         terminate_instance_task.delay(instance_id_str, instance.container_id)
 
     return f"開始 {len(expired_instances)} 個清理任務"
-

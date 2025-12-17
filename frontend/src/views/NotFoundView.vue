@@ -4,21 +4,21 @@
       <div class="error-illustration">
         <div class="error-code">404</div>
       </div>
-      
+
       <h1 class="error-title">找不到頁面</h1>
       <h2 class="error-subtitle">你訪問的頁面不存在</h2>
-      
+
       <p class="error-message">
         或許這個頁面被張胖胖吃掉了，
         <br />
         請返回首頁繼續探索吧
       </p>
-      
+
       <router-link to="/" class="back-home btn btn-primary">
         <span class="back-icon">←</span>
         返回首頁
       </router-link>
-      
+
       <div class="decoration-dots">
         <span class="dot"></span>
         <span class="dot"></span>
@@ -176,7 +176,8 @@
 }
 
 @keyframes float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0px) rotate(0deg);
   }
   50% {
@@ -185,7 +186,8 @@
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
     opacity: 0.15;
   }
@@ -196,7 +198,8 @@
 }
 
 @keyframes bounce {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0);
   }
   50% {

@@ -49,7 +49,7 @@ class LabCompletion(models.Model):
         ("pending_reflection", "Pending Reflection"),
         ("completed", "Completed"),
     ]
-    
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="completions")
     lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name="completions")

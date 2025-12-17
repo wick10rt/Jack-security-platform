@@ -45,7 +45,7 @@ export function useSolutions(labId: Ref<string>, submissionStatus: Ref<string>) 
         }
       }
     },
-    { immediate: true }
+    { immediate: true },
   )
 
   return {
@@ -56,3 +56,4 @@ export function useSolutions(labId: Ref<string>, submissionStatus: Ref<string>) 
     toggleSolutions,
   }
 }
+

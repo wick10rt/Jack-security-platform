@@ -3,19 +3,15 @@
     <header v-if="authStore.isAuthenticated" class="main-header">
       <div class="header-container">
         <div class="logo">
-            <span class="logo-text">張胖胖資安攻防平台</span>
+          <span class="logo-text">張胖胖資安攻防平台</span>
         </div>
 
         <nav class="logo">
-          <RouterLink to="/dashboard" class="nav-link">
-            Dashboard
-          </RouterLink>
+          <RouterLink to="/dashboard" class="nav-link"> Dashboard </RouterLink>
         </nav>
-        
+
         <nav class="main-nav">
-          <RouterLink to="/labs" class="nav-link">
-            Lab 清單
-          </RouterLink>
+          <RouterLink to="/labs" class="nav-link"> Lab 清單 </RouterLink>
         </nav>
 
         <div class="user-actions">
@@ -249,7 +245,9 @@ const handleLogout = () => {
   border-radius: 50%;
   background: var(--accent);
   transform: translate(-50%, -50%);
-  transition: width 0.4s ease, height 0.4s ease;
+  transition:
+    width 0.4s ease,
+    height 0.4s ease;
   z-index: 0;
 }
 
@@ -423,7 +421,8 @@ const handleLogout = () => {
 }
 
 @keyframes swing {
-  0%, 100% {
+  0%,
+  100% {
     transform: rotate(0deg);
   }
   25% {
@@ -434,3 +433,4 @@ const handleLogout = () => {
   }
 }
 </style>
+

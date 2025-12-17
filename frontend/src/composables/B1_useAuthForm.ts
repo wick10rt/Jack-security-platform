@@ -30,18 +30,18 @@ export function useAuthForm() {
   }
 
   // EE-0 使用者註冊
-  const registerForm = reactive({ 
-    username: '', 
+  const registerForm = reactive({
+    username: '',
     password: '',
-    passwordConfirm: '' 
+    passwordConfirm: '',
   })
-  
+
   const registerErrors = reactive<{
     username?: string[]
     password?: string[]
     non_field_errors?: string[]
   }>({})
-  
+
   const isRegistering = ref(false)
 
   // 檢查密碼是否一致
@@ -52,8 +52,7 @@ export function useAuthForm() {
     return false
   })
 
-  const checkPasswordMatch = () => {
-  }
+  const checkPasswordMatch = () => {}
 
   const handleRegister = async () => {
     if (isRegistering.value) return
@@ -132,3 +131,4 @@ export function useAuthForm() {
     checkPasswordMatch,
   }
 }
+

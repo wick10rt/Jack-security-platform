@@ -28,21 +28,21 @@
           </div>
           <div class="stat-card">
             <div class="stat-number">
-              {{ completions.filter(c => c.status === 'completed').length }}
+              {{ completions.filter((c) => c.status === 'completed').length }}
             </div>
             <div class="stat-label">已完成</div>
           </div>
           <div class="stat-card">
             <div class="stat-number">
-              {{ completions.filter(c => c.status !== 'completed').length }}
+              {{ completions.filter((c) => c.status !== 'completed').length }}
             </div>
             <div class="stat-label">進行中</div>
           </div>
         </div>
 
         <ul class="completion-list">
-          <li 
-            v-for="(completion, index) in completions" 
+          <li
+            v-for="(completion, index) in completions"
             :key="completion.id"
             class="completion-item fade-in-up"
             :style="{ animationDelay: `${index * 0.1}s` }"
@@ -53,10 +53,7 @@
             </div>
             <div class="completion-info">
               <strong class="completion-title">{{ completion.lab_title }}</strong>
-              <span 
-                class="completion-status"
-                :class="completion.status"
-              >
+              <span class="completion-status" :class="completion.status">
                 {{ completion.status === 'completed' ? '已完成' : '待完成省思' }}
               </span>
             </div>
@@ -89,7 +86,6 @@ import { useProgress } from '@/composables/B3_useGetProgress'
 
 const { completions, isLoading, error } = useProgress()
 </script>
-
 
 <style scoped>
 .dashboard {
@@ -392,3 +388,4 @@ const { completions, isLoading, error } = useProgress()
   }
 }
 </style>
+

@@ -1,19 +1,18 @@
 <template>
   <div class="auth-container">
     <div class="auth-form-wrapper fade-in-up">
-
       <!-- EE-0 使用者註冊 -->
       <form v-if="isRegisterMode" @submit.prevent="handleRegister" class="auth-form">
         <h2 class="auth-title">創建你的帳號</h2>
         <p class="auth-subtitle">加入我們和張胖胖一起成長</p>
-        
+
         <div class="form-group">
           <label for="reg-username">使用者名稱</label>
-          <input 
-            id="reg-username" 
-            v-model="registerForm.username" 
-            type="text" 
-            required 
+          <input
+            id="reg-username"
+            v-model="registerForm.username"
+            type="text"
+            required
             placeholder="請輸入使用者名稱"
           />
           <div v-if="registerErrors.username" class="error-list">
@@ -25,11 +24,11 @@
 
         <div class="form-group">
           <label for="reg-password">密碼</label>
-          <input 
-            id="reg-password" 
-            v-model="registerForm.password" 
-            type="password" 
-            required 
+          <input
+            id="reg-password"
+            v-model="registerForm.password"
+            type="password"
+            required
             placeholder="請輸入密碼"
             @input="checkPasswordMatch"
           />
@@ -42,18 +41,16 @@
 
         <div class="form-group">
           <label for="reg-password-confirm">確認密碼</label>
-          <input 
-            id="reg-password-confirm" 
-            v-model="registerForm.passwordConfirm" 
-            type="password" 
-            required 
+          <input
+            id="reg-password-confirm"
+            v-model="registerForm.passwordConfirm"
+            type="password"
+            required
             placeholder="請再次輸入密碼"
             @input="checkPasswordMatch"
           />
           <div v-if="passwordMismatch" class="error-list">
-            <p class="error-item">
-              兩次輸入的密碼不一樣
-            </p>
+            <p class="error-item">兩次輸入的密碼不一樣</p>
           </div>
         </div>
 
@@ -63,11 +60,7 @@
           </p>
         </div>
 
-        <button 
-          type="submit" 
-          class="btn submit-btn" 
-          :disabled="isRegistering || passwordMismatch"
-        >
+        <button type="submit" class="btn submit-btn" :disabled="isRegistering || passwordMismatch">
           <span v-if="isRegistering" class="btn-loading">
             <span class="spinner-small"></span>
             註冊中...
@@ -76,7 +69,7 @@
         </button>
 
         <p class="toggle-link">
-          已經有帳號了? 
+          已經有帳號了?
           <a @click="toggleMode" class="link-accent">立即登入</a>
         </p>
       </form>
@@ -88,22 +81,22 @@
 
         <div class="form-group">
           <label for="login-username">使用者名稱</label>
-          <input 
-            id="login-username" 
-            v-model="loginForm.username" 
-            type="text" 
-            required 
+          <input
+            id="login-username"
+            v-model="loginForm.username"
+            type="text"
+            required
             placeholder="請輸入使用者名稱"
           />
         </div>
 
         <div class="form-group">
           <label for="login-password">密碼</label>
-          <input 
-            id="login-password" 
-            v-model="loginForm.password" 
-            type="password" 
-            required 
+          <input
+            id="login-password"
+            v-model="loginForm.password"
+            type="password"
+            required
             placeholder="請輸入密碼"
           />
         </div>
@@ -119,7 +112,7 @@
         </button>
 
         <p class="toggle-link">
-          還沒有帳號? 
+          還沒有帳號?
           <a @click="toggleMode" class="link-accent">立即註冊</a>
         </p>
       </form>
@@ -413,3 +406,4 @@ const {
   }
 }
 </style>
+
