@@ -127,14 +127,7 @@ npm run dev
 
 ## Videos
 
-| Week         | Video Link                                  |
-| :----------- | :------------------------------------------ |
-| **Week 1**   | [Watch Video](https://youtu.be/6UBfEKyguUY) |
-| **Week 2**   | [Watch Video](https://youtu.be/D8hVQlWvPsI) |
-| **Week 3**   | [Watch Video](https://youtu.be/BnvHT9BLQB0) |
-| **Week 4**   | [Watch Video](https://youtu.be/1fMSB6qCsnA) |
-| **Week 5**   | [Watch Video](https://youtu.be/OzDE_BdZOjo) |
-| **Week 6-7** | [Watch Video](https://youtu.be/ZFG1guBRovA) |
-| **Week 8-9** | [Watch Video](https://youtu.be/kf87MPGtzp0) |
-| **Week 10**  | [Watch Video](https://youtu.be/-eIVovvtz4o) |
-| **Week 11**  | [Watch Video](https://youtu.be/MmZwC7nAL7E) |
+| Video            | Video Link                     |
+| :--------------- | :----------------------------- |
+| **Only Backend** | <https://youtu.be/-wbhllZCkx4> |
+| **All In One**   | <https://youtu.be/L85lbrdntMc> |
