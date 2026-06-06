@@ -2,7 +2,6 @@ import './assets/main.css'
 
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-// 導入 toast
 import Toast, { type PluginOptions } from 'vue-toastification'
 import 'vue-toastification/dist/index.css'
 

@@ -7,7 +7,6 @@ interface LabSummary {
   category: string
 }
 
-// IE-3 取得實驗列表
 export function getLabList() {
   const labs = ref<LabSummary[]>([])
   const isLoading = ref(true)
@@ -27,7 +26,6 @@ export function getLabList() {
     }
   }
 
-  // 自動獲取數據
   onMounted(fetchLabs)
 
   return {

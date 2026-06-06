@@ -5,19 +5,16 @@
       <p class="page-subtitle">來跟張胖胖一起學習</p>
     </div>
 
-    <!-- 載入狀態 -->
     <div v-if="isLoading" class="loading-container fade-in">
       <div class="spinner"></div>
       <p class="loading-text">正在載入實驗列表...</p>
     </div>
 
-    <!-- 錯誤狀態 -->
     <div v-if="error" class="error-container fade-in">
       <div class="error-icon">⚠️</div>
       <p class="error-text">{{ error }}</p>
     </div>
 
-    <!-- EE-3 使用者查看實驗清單 -->
     <div v-if="!isLoading && !error" class="lab-content">
       <div v-if="labs.length > 0" class="lab-grid">
         <div
@@ -47,7 +44,6 @@
         </div>
       </div>
 
-      <!-- 沒有資料狀態 -->
       <div v-else class="empty-state fade-in-up">
         <p class="empty-text">目前沒有可用的實驗</p>
         <p class="empty-hint">敬請期待張胖胖增加更多精彩內容</p>

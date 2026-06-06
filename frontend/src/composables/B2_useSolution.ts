@@ -7,14 +7,12 @@ interface Solution {
   reflection: string
 }
 
-// EE-8 使用者查看其他人的解法
 export function useSolutions(labId: Ref<string>, submissionStatus: Ref<string>) {
   const solutions = ref<Solution[]>([])
   const showSolutions = ref(false)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
-  // IE-8 向 B2 請求解法清單
   const fetchSolutions = async () => {
     isLoading.value = true
     error.value = null

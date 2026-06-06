@@ -30,7 +30,6 @@ export function useSubmit(labId: Ref<string>) {
     return ''
   }
 
-  // 取的進行實驗的狀態
   const fetchSubmissionStatus = async () => {
     isLoadingStatus.value = true
     try {
@@ -71,7 +70,6 @@ export function useSubmit(labId: Ref<string>) {
     }
   }
 
-  // EE-6 提交答案
   const submitAnswer = async () => {
     if (isSubmitting.value) return
 
@@ -83,7 +81,6 @@ export function useSubmit(labId: Ref<string>) {
         answer: answer.value,
       })
 
-      // 提交成功後更新狀態
       submissionStatus.value = 'pending_reflection'
       answer.value = ''
     } catch (err: any) {

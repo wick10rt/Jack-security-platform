@@ -30,7 +30,6 @@ export function useControllInstance(labId: Ref<string>) {
 
   const isLaunching = computed(() => isCurrentLabActive.value && instanceStore.isLoading)
 
-  // EE-5 啟動靶機
   const launchInstance = async () => {
     if (hasAnyInstance.value && !isCurrentLabActive.value) {
       toast.warning('你已經有一個靶機在運行了，請先關閉它。')
@@ -44,7 +43,6 @@ export function useControllInstance(labId: Ref<string>) {
     }
   }
 
-  // EE-11 手動關閉靶機
   const terminateInstance = async () => {
     const result = await Swal.fire({
       title: '確定要關閉靶機嗎？',
@@ -64,7 +62,6 @@ export function useControllInstance(labId: Ref<string>) {
     }
   }
 
-  // 進入靶機
   const accessInstance = async () => {
     if (!instanceStore.activeInstance) {
       toast.warning('靶機尚未就緒，請稍候。')

@@ -5,8 +5,6 @@ ALLOWED_QUERY_VALUE = "@1121717dogdog1101737fatfat"
 SESSION_FLAG = "admin_key_verified"
 
 
-# C-2
-# 其他使用者不可以訪問管理員頁面
 class HideAdminMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response

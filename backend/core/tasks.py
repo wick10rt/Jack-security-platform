@@ -12,10 +12,8 @@ from .models import ActiveInstance, Lab, User
 logger = logging.getLogger(__name__)
 
 
-# B4 靶機分配服務
 
 
-# IE-5 啟動靶機
 @shared_task
 def launch_instance_task(instance_id_str, lab_id_str, user_id_str):
     instance_id = uuid.UUID(instance_id_str)
@@ -29,7 +27,6 @@ def launch_instance_task(instance_id_str, lab_id_str, user_id_str):
         ActiveInstance.objects.filter(id=instance_id).delete()
         return
 
-    # 建立 docker-compose.yml
     compose_dir = (settings.BASE_DIR.parent / "instances").resolve()
     compose_file_path = compose_dir / f"docker-compose-{instance_id}.yml"
     project_name = f"instance_{instance_id}"
@@ -65,8 +62,6 @@ services:
     with open(compose_file_path, "w") as f:
         f.write(compose_content)
 
-    # D2 容器管理服務
-    # 啟動容器
     try:
         subprocess.run(
             [
@@ -142,7 +137,6 @@ services:
         ActiveInstance.objects.filter(id=instance_id).delete()
 
 
-# IE-11 手動關閉靶機
 @shared_task
 def terminate_instance_task(instance_id_str, container_id):
     logger.info(f"開始清除 {instance_id_str}")
@@ -189,7 +183,6 @@ def terminate_instance_task(instance_id_str, container_id):
     ActiveInstance.objects.filter(id=uuid.UUID(instance_id_str)).delete()
 
 
-# IE-10 自動清理過期靶機
 @shared_task
 def cleanup_expired_instances():
     logger.info("開始清理過期靶機")

@@ -10,7 +10,6 @@ interface LabDetail {
   category: string
 }
 
-// IE-4 獲取實驗詳情
 export function LabDetail(labId: Ref<string>) {
   const lab = ref<LabDetail | null>(null)
   const isLoading = ref(true)

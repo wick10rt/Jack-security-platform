@@ -21,13 +21,11 @@ export const useAuthStore = defineStore('auth', () => {
   let isRefreshing = false
   let refreshSubscribers: Array<(token: string) => void> = []
 
-  // 驗證使用者 Token 是否有效
   const isAuthenticated = computed(() => {
     if (!accessToken.value || !tokenExp.value) return false
     return tokenExp.value * 1000 > Date.now()
   })
 
-  // 取得/設置使用者請求帶 Token
   function setAuthInfo(access: string, refresh?: string, updateUserInfo = true) {
     accessToken.value = access
     localStorage.setItem('accessToken', access)
@@ -51,7 +49,6 @@ export const useAuthStore = defineStore('auth', () => {
     axios.defaults.headers.common['Authorization'] = `Bearer ${access}`
   }
 
-  // 清除使用者登入認證資料
   function clearAuthInfo() {
     accessToken.value = null
     refreshToken.value = null
@@ -75,7 +72,6 @@ export const useAuthStore = defineStore('auth', () => {
     loginError.value = null
   }
 
-  // EE-1 使用者登入
   async function login(user: string, pass: string): Promise<string | null> {
     isLoggingIn.value = true
     loginError.value = null
@@ -116,7 +112,6 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // 刷新 Token
   async function refreshTokenAction(): Promise<string> {
     if (!refreshToken.value) {
       clearAuthInfo()
@@ -157,7 +152,6 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // EE-0 使用者註冊
   async function register(user: string, pass: string): Promise<void> {
     const publicAxios = axios.create({
       baseURL: axios.defaults.baseURL,

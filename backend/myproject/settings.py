@@ -16,28 +16,20 @@ import os
 from datetime import timedelta
 from celery.schedules import crontab
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# 使用env環境
 env = environ.Env(DEBUG=(bool, False))
 
 environ.Env.read_env(os.path.join(BASE_DIR.parent, ".env"))
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env("SECRET_KEY")
 
-# SECURITY WARNING: don't run with debug turned on in production!
 
-# TODO 測試改的 要改回 False
 DEBUG = True
 
 ALLOWED_HOSTS = []
 
 
-# Application definition
 
 INSTALLED_APPS = [
     "corsheaders",
@@ -92,8 +84,6 @@ TEMPLATES = [
 WSGI_APPLICATION = "myproject.wsgi.application"
 
 
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
     "default": {
@@ -106,16 +96,12 @@ DATABASES = {
     }
 }
 
-# Axes 設定
 AUTHENTICATION_BACKENDS = {
     "axes.backends.AxesBackend",
     "django.contrib.auth.backends.ModelBackend",
 }
 
-# Password validation
-# https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
-# 密碼驗證
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "pwned_passwords_django.validators.PwnedPasswordsValidator",
@@ -127,13 +113,13 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
         "OPTIONS": {
             "user_attributes": ("username", "password"),
-            "max_similarity": 0.5,  # 與 username 相似度小於0.5
+            "max_similarity": 0.5,
         },
     },
     {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
         "OPTIONS": {
-            "min_length": 12,  # 密碼至少12個字元
+            "min_length": 12,
         },
     },
     {
@@ -145,8 +131,6 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-# Internationalization
-# https://docs.djangoproject.com/en/5.2/topics/i18n/
 
 LANGUAGE_CODE = "en-us"
 
@@ -157,17 +141,12 @@ USE_I18N = True
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = "static/"
 
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# 使用自訂的 User Model
 AUTH_USER_MODEL = "core.User"
 
 SIMPLE_JWT = {
@@ -175,7 +154,6 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
 }
 
-# Axes 設定
 AXES_FAILURE_LIMIT = 20
 AXES_COOLOFF_TIME = timedelta(minutes=30)
 AXES_WINDOW = timedelta(minutes=15)
@@ -183,7 +161,6 @@ AXES_RESET_ON_SUCCESS = True
 AXES_USE_ADMIN_SITE = True
 AXES_LOCKOUT_PARAMETERS = ["username"]
 
-# CORS_ALLOW_ALL_ORIGINS = True
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
@@ -209,7 +186,6 @@ CORS_ALLOW_HEADERS = [
     "x-requested-with",
 ]
 
-# Celery 設定
 CELERY_BROKER_URL = "redis://127.0.0.1:6379/0"
 CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379/0"
 CELERY_ACCEPT_CONTENT = ["json"]
@@ -217,7 +193,6 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "Asia/Taipei"
 
-# Celery 每分鐘自動執行一次清理任務
 CELERY_BEAT_SCHEDULE = {
     "cleanup_instances_every_minute": {
         "task": "core.tasks.cleanup_expired_instances",

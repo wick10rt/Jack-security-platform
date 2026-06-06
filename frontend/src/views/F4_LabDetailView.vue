@@ -1,12 +1,10 @@
 <template>
   <div class="lab-detail-page">
-    <!-- 載入狀態 -->
     <div v-if="isLoading" class="loading-state fade-in">
       <div class="spinner"></div>
       <p class="loading-text">正在載入實驗資料...</p>
     </div>
 
-    <!-- 錯誤狀態 -->
     <div v-if="error" class="error-state fade-in">
       <div class="error-icon">⚠️</div>
       <h2>發生錯誤</h2>
@@ -17,7 +15,6 @@
       </RouterLink>
     </div>
 
-    <!-- 實驗內容 -->
     <article v-if="lab && !isLoading" class="lab-article fade-in-up">
       <header class="lab-header">
         <h1 class="lab-title">{{ lab.title }}</h1>
@@ -27,17 +24,14 @@
         </p>
       </header>
 
-      <!-- 實驗說明 -->
       <section class="description-section card">
         <h2 class="section-title">實驗說明</h2>
         <div class="description-content" v-html="lab.description"></div>
       </section>
 
-      <!-- 靶機管理-->
       <section class="actions-section card">
         <h2 class="section-title">靶機管理</h2>
 
-        <!-- EE-5 啟動靶機 -->
         <div v-if="instanceStatus === 'no-instance'" class="action-block">
           <button
             @click="launchInstance"
@@ -52,7 +46,6 @@
           </button>
         </div>
 
-        <!-- 有其他實驗的靶機在運行 -->
         <div v-else-if="instanceStatus === 'other-lab'" class="other-instance-block">
           <div class="warning-box">
             <p class="warning-message">你在其他實驗中有一個靶機正在運行</p>
@@ -71,7 +64,6 @@
           </button>
         </div>
 
-        <!-- 當前實驗靶機運行中 -->
         <div v-else-if="instanceStatus === 'current-lab'">
           <div v-if="instanceUrl === 'creating...'" class="creating-block">
             <div class="spinner-small"></div>
@@ -106,7 +98,6 @@
         <p v-if="launchError" class="error-message fade-in">{{ launchError }}</p>
       </section>
 
-      <!-- EE-6 提交答案-->
       <section
         v-if="
           !isLoadingStatus &&
@@ -141,7 +132,6 @@
         </div>
       </section>
 
-      <!-- 狀態載入中 -->
       <section v-if="isLoadingStatus" class="loading-section card">
         <div class="loading-inline">
           <div class="spinner-small"></div>
@@ -149,7 +139,6 @@
         </div>
       </section>
 
-      <!-- 提交防禦表單 EE-7 -->
       <section
         v-if="submissionStatus === 'pending_reflection' || submissionStatus === 'already_completed'"
         class="reflection-section card"
@@ -200,7 +189,6 @@
         </form>
       </section>
 
-      <!-- SE-10 實驗完成狀態 -->
       <section
         v-if="submissionSuccess || submissionStatus === 'already_completed'"
         class="completed-section card"
@@ -211,7 +199,6 @@
           <div class="completed-hint">想要修改防禦表單內容，只需再填一次表單即可</div>
         </div>
 
-        <!-- EE-8 查看他人解法-->
         <div class="solutions-section">
           <button @click="toggleSolutions" class="solutions-toggle-btn btn btn-secondary">
             <span class="btn-icon">{{ showSolutions ? '' : '' }}</span>
@@ -266,12 +253,10 @@ import { useReflection } from '@/composables/B3_useReflection'
 import { useSolutions } from '@/composables/B2_useSolution'
 import { useControllInstance } from '@/composables/B4_useControlInstance'
 
-// EE-4 顯示實驗詳情
 const route = useRoute()
 const labId = toRef(route.params, 'id') as Ref<string>
 const { lab, isLoading, error } = LabDetail(labId)
 
-// EE-6 提交答案
 const {
   answer,
   isSubmitting: isAnswerSubmitting,
@@ -281,7 +266,6 @@ const {
   submitAnswer,
 } = useSubmit(labId)
 
-// EE-7 提交防禦表單
 const {
   reflectionForm,
   isSubmitting: isReflectionSubmitting,
@@ -291,7 +275,6 @@ const {
   submitReflection,
 } = useReflection(labId, submissionStatus)
 
-// EE-8 顯示他人解法
 const {
   solutions,
   showSolutions,
@@ -300,7 +283,6 @@ const {
   toggleSolutions,
 } = useSolutions(labId, submissionStatus)
 
-// EE-5 啟動靶機 / EE-11 手動關閉靶機
 const {
   instanceUrl,
   instanceStatus,

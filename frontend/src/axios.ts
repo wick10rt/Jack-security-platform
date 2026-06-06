@@ -6,7 +6,6 @@ const axiosInstance = axios.create({
   timeout: 10000,
 })
 
-// 自動加上 Token 到每個請求的標頭
 axiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('accessToken')
@@ -20,7 +19,6 @@ axiosInstance.interceptors.request.use(
   },
 )
 
-// 自動刷新 Token
 axiosInstance.interceptors.response.use(
   (response) => {
     return response
@@ -64,7 +62,6 @@ axiosInstance.interceptors.response.use(
       } catch (refreshError) {
         console.error('刷新失敗')
 
-        // 刷新失敗 導向 F1 登入頁面
         if (window.location.pathname !== '/login') {
           window.location.href = '/login'
         }

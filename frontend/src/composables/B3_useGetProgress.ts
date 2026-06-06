@@ -17,7 +17,6 @@ export function useProgress() {
   const isLoading = ref(true)
   const error = ref<string | null>(null)
 
-  // 驗證是否登入
   const fetchProgress = async () => {
     if (!authStore.isAuthenticated) {
       error.value = '請先登入'
@@ -28,7 +27,6 @@ export function useProgress() {
     isLoading.value = true
     error.value = null
 
-    // IE-2 獲取使用者資料
     try {
       const response = await axios.get<LabCompletion[]>('/progress/')
       completions.value = response.data
@@ -41,7 +39,6 @@ export function useProgress() {
     }
   }
 
-  // 自動獲取數據
   onMounted(() => {
     fetchProgress()
   })

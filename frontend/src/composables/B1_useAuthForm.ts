@@ -15,7 +15,6 @@ export function useAuthForm() {
   const isRegisterMode = ref(false)
   const toast = useToast()
 
-  // 登入/註冊切換
   const toggleMode = () => {
     isRegisterMode.value = !isRegisterMode.value
     authStore.clearLoginError()
@@ -29,7 +28,6 @@ export function useAuthForm() {
     registerForm.passwordConfirm = ''
   }
 
-  // EE-0 使用者註冊
   const registerForm = reactive({
     username: '',
     password: '',
@@ -44,7 +42,6 @@ export function useAuthForm() {
 
   const isRegistering = ref(false)
 
-  // 檢查密碼是否一致
   const passwordMismatch = computed(() => {
     if (registerForm.password && registerForm.passwordConfirm) {
       return registerForm.password !== registerForm.passwordConfirm
@@ -57,7 +54,6 @@ export function useAuthForm() {
   const handleRegister = async () => {
     if (isRegistering.value) return
 
-    // 確認密碼是否一致
     if (passwordMismatch.value) {
       toast.error('兩次輸入的密碼不一樣')
       return
@@ -93,14 +89,12 @@ export function useAuthForm() {
     }
   }
 
-  // EE-1 使用者登入
   const loginForm = reactive({ username: '', password: '' })
 
   const handleLogin = async () => {
     if (isLoggingIn.value) return
     const redirectUrl = await authStore.login(loginForm.username, loginForm.password)
 
-    // 根據後端回傳的 redirect_url 進行導向
     if (redirectUrl) {
       if (redirectUrl === '/admin/') {
         const adminUrl = new URL(ADMIN_URL)

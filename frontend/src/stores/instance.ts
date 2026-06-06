@@ -29,7 +29,6 @@ export const useInstanceStore = defineStore('instance', () => {
   const error = ref<string | null>(null)
   const pollingInterval = ref<number | undefined>(undefined)
 
-  // 將靶機狀態存入localstorage
   const saveToLocalStorage = () => {
     try {
       if (activeInstance.value) {
@@ -49,7 +48,6 @@ export const useInstanceStore = defineStore('instance', () => {
     }
   }
 
-  // EE-5 啟動靶機
   const launchInstance = async (labId: string) => {
     isLoading.value = true
     error.value = null
@@ -87,7 +85,6 @@ export const useInstanceStore = defineStore('instance', () => {
     }
   }
 
-  // 輪詢靶機狀態
   const pollInstanceStatus = (instanceId: string, labId: string) => {
     pollingInterval.value = window.setInterval(async () => {
       try {
@@ -120,7 +117,6 @@ export const useInstanceStore = defineStore('instance', () => {
       } catch (err: any) {
         console.error('Polling error:', err)
 
-        // S6 檢查是否為靶機擁有者進入靶機
         if (err.response?.status === 404 || err.response?.status === 403) {
           stopPolling()
           activeInstance.value = null
@@ -129,10 +125,9 @@ export const useInstanceStore = defineStore('instance', () => {
           toast.error('你無權訪問這個靶機')
         }
       }
-    }, 3000) // 每 3 秒輪詢一次
+    }, 3000)
   }
 
-  // EE-11 手動關閉靶機
   const terminateInstance = async () => {
     if (!activeInstance.value) return
 
@@ -157,7 +152,6 @@ export const useInstanceStore = defineStore('instance', () => {
     }
   }
 
-  // 從 localstorage 恢復靶機狀態
   const initializeFromStorage = async () => {
     if (!activeInstance.value) return
 
