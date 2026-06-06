@@ -4,20 +4,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Jack Security Platform is a web security learning platform. Users solve
-vulnerable-app challenges ("labs"), each backed by an isolated, ephemeral
-Docker container launched on demand. The flow is: submit a correct answer →
-write a defensive "reflection" → unlock other users' community solutions.
+Jack Security Platform (資安攻防系統) is a web-security learning platform. Users
+solve vulnerable-app challenges ("labs"), each backed by an isolated, ephemeral
+Docker container launched on demand. Its defining twist over sites like
+TryHackMe / PortSwigger: solving a lab is **not** the end — a correct answer
+only unlocks a defensive "reflection" form, and submitting that form is what
+marks the lab complete and unlocks other users' community solutions. The goal is
+to make learners think about *defense*, not just exploitation.
 
 Three top-level parts:
 
-- `backend/` — Django + Django REST Framework API, with Celery for async
-  instance management.
+- `backend/` — Django + Django REST Framework API, Celery for async instance
+  management. Follows Django's **MVT**: `models.py` (data), `views.py` +
+  `tasks.py` (logic), and the SPA is the "template" layer.
 - `frontend/` — Vue 3 + Vite + TypeScript SPA (Pinia state, vue-router).
-- `labs/` — Self-contained vulnerable web apps (PHP + MySQL), each with its own
-  `Dockerfile` / `docker-compose.yml`, published as Docker images (e.g.
-  `wick10rt/jack-system-sqli-blind-bool:1.1`). A `Lab.docker_image` row points
-  the backend at the image to spin up.
+- `labs/` — Self-contained vulnerable web apps (PHP + MySQL, sqli-labs derived),
+  each with its own `Dockerfile` / `docker-compose.yml`, published as Docker
+  images (e.g. `wick10rt/jack-system-sqli-blind-bool:1.1`). A `Lab.docker_image`
+  row points the backend at the image to spin up.
 
 ## Common Commands
 
@@ -63,21 +67,24 @@ Two `.env` files are required (neither is committed):
 
 Backend instance management is fully async via Celery and shells out to
 `docker-compose`. The data model is `ActiveInstance` (`core/models.py`); the
-work happens in `core/tasks.py`, triggered from `core/views.py`.
+work happens in `core/tasks.py`, triggered from `core/views.py`. This is the
+`B4` (靶機分配服務) + `D1`/`D2` (Docker/容器管理) slice of the design.
 
-- **Launch** (`LaunchInstanceView` → `launch_instance_task`): the view creates
-  an `ActiveInstance` row with placeholder `instance_url`/`container_id` of
-  `"creating..."` and returns `202 Accepted` immediately. The Celery task then
-  writes a per-instance compose file to `<repo-root>/instances/docker-compose-<id>.yml`,
-  brings it up, and resolves the host-mapped port to fill in the real
-  `instance_url`. The frontend polls `InstanceStatusView` until the URL is ready.
+- **Launch** (`LaunchInstanceView` → `launch_instance_task`, events EE-5/IE-5):
+  the view creates an `ActiveInstance` row with placeholder
+  `instance_url`/`container_id` of `"creating..."` and returns `202 Accepted`
+  immediately. The Celery task then writes a per-instance compose file to
+  `<repo-root>/instances/docker-compose-<id>.yml`, brings it up, and resolves the
+  host-mapped port to fill in the real `instance_url`. The frontend polls
+  `InstanceStatusView` every 3s until the URL is ready.
 - **Constraints** (enforced in `LaunchInstanceView` inside a
-  `select_for_update()` transaction): one active instance per user; a global cap
-  of `ACTIVEINSTANCE_LIMIT = 30`; instances expire 30 minutes after creation.
-- **Teardown**: `terminate_instance_task` (manual, via `TerminateInstanceView`)
-  and `cleanup_expired_instances` (Celery Beat, every minute) tear down compose
-  projects and delete rows. Cleanup dispatches one `terminate_instance_task` per
-  expired instance.
+  `select_for_update()` transaction): one active instance per user (C-3); a
+  global cap of `ACTIVEINSTANCE_LIMIT = 30` (C-9); instances expire 30 minutes
+  after creation (C-4).
+- **Teardown**: `terminate_instance_task` (manual, EE-11/IE-11, via
+  `TerminateInstanceView`) and `cleanup_expired_instances` (Celery Beat every
+  minute, IE-10) tear down compose projects and delete rows. Cleanup dispatches
+  one `terminate_instance_task` per expired instance.
 
 When changing instance behavior, keep the view (sync DB bookkeeping +
 constraints) and the task (actual Docker work) in sync — placeholder values like
@@ -102,21 +109,53 @@ constraints) and the task (actual Docker work) in sync — placeholder values li
 
 ### Completion / reflection state machine
 
-`LabCompletion.status` moves `pending_reflection → completed`. A correct answer
-(`SubmitAnswerView`) creates/sets `pending_reflection`; submitting the reflection
-form (`ReflectionView`) creates the `CommunitySolution` and promotes the status
-to `completed`. Community solutions for a lab are only visible to users who have
-`completed` that lab (`CommunitySolutionListView`).
+`LabCompletion.status` moves `pending_reflection → completed` (states SE-7 →
+SE-10). A correct answer (`SubmitAnswerView`, EE-6) creates/sets
+`pending_reflection`; submitting the reflection form (`ReflectionView`, EE-7)
+creates the `CommunitySolution` and promotes the status to `completed`. Community
+solutions for a lab are only visible to users who have `completed` that lab
+(`CommunitySolutionListView`, C-6).
+
+### Security controls (from the design doc, S-series)
+
+- **S1** — password strength: `django-pwned-passwords` + validators requiring
+  ≥12 chars and <0.5 similarity to username (`AUTH_PASSWORD_VALIDATORS`).
+- **S2** — brute-force lockout: `django-axes` (`AXES_*` in settings). Note the
+  code uses `AXES_FAILURE_LIMIT = 20` / 15-min window / 30-min cooloff — the
+  design doc's "10 failures" figure is stale; **trust the code**.
+- **S3** — SQL-injection defense in the *platform itself*: all DB access goes
+  through Django's ORM (parameterized). The vulnerable behavior lives only inside
+  `labs/` images, never in `backend/`.
+
+## Code navigation: the cross-reference scheme
+
+The whole codebase is organized around the design doc's ID scheme, mirrored in
+filenames (e.g. `F4_LabDetailView.vue`, `B1_useAuthForm.ts`). Inline comments
+that used to carry these anchors have been stripped, so this table is now the
+primary map. When adding a feature, follow the existing numbering.
+
+| Prefix | Meaning | Where it lives |
+| --- | --- | --- |
+| `F1`–`F5` | Frontend pages | `frontend/src/views/F*.vue` (F1 login, F2 dashboard, F3 lab list, F4 lab detail). **F5 (admin) is the Django admin site at `/admin/`, not a Vue page.** |
+| `B1`–`B5` | Backend service groupings *and* their frontend composables | Backend: view groups in `core/views.py` (B1 auth, B2 lab content, B3 user data, B4 instance allocation, B5 answer check). Frontend: `frontend/src/composables/B*.ts`. |
+| `D1`–`D4` | Infrastructure services | D1 Docker runtime, D2 compose/container mgmt (`core/tasks.py`), D3 Postgres (`docker-compose.yml`), D4 admin backend (Django admin). |
+| `EE-n` | External (user-triggered) API events | `core/urls.py` routes; EE-0 register … EE-11 terminate instance. |
+| `IE-n` | Internal events (service → DB/container) | `core/tasks.py` and view internals. |
+| `SE-n` | State-machine transitions | Lab/instance lifecycle (see state machine above). |
+| `C-n` | Business constraints | C-1 auth-gated pages, C-2 admin-only, C-3 one instance/user, C-4 30-min expiry, C-5 reflect-before-complete, C-6 completed-gates-solutions, C-7 PBKDF2+SHA256 (Django default hasher), C-8 mandated stack, C-9 30-instance cap. |
+| `S-n` | Security controls | See the Security section above. |
+| `U/L/CS/LC/AI` | Data-dictionary field IDs | The five models in `core/models.py` (User, Lab, CommunitySolution, LabCompletion, ActiveInstance). |
 
 ## Conventions
 
-- **Comment prefixes are a project-wide cross-reference scheme**, mirrored in
-  filenames. Treat them as anchors when navigating: `Fn` = frontend views
-  (`F1_LoginView.vue`…`F4_LabDetailView.vue`), `Bn` = backend service groupings /
-  frontend composables (`B1`–`B5`), `EE-n` = API endpoints, `C-n` = business
-  constraints, `S-n` = security controls, `IE-n` = instance events, `D-n` =
-  infrastructure services. When adding a feature, follow the existing numbering.
-- Code comments and log messages are written in Traditional Chinese — match that
-  style in `core/`.
+- Code comments and log messages, where present, are written in Traditional
+  Chinese — match that style in `core/`. (Most cross-reference comments have been
+  removed; rely on filenames + the table above to navigate.)
 - API routes: auth lives at `/api/auth/...` (`myproject/urls.py`); everything
   else is under `/api/` from `core/urls.py`.
+- Mandated stack (C-8): Vue.js, Django, Python, Docker, docker-compose,
+  PostgreSQL. Development model is waterfall — design is fixed up front, so
+  prefer fitting changes into the existing ID scheme over introducing new
+  abstractions.
+- `DEBUG = True` is currently hard-coded in `settings.py` (see the TODO there) —
+  it must be turned off for any real deployment.
