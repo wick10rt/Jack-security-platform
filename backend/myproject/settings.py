@@ -32,10 +32,12 @@ ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
 ADMIN_ACCESS_KEY = env("ADMIN_ACCESS_KEY", default="")
 
 if not DEBUG:
+    # 純 HTTP 內網部署時，把下面三個 *_SECURE / SSL_REDIRECT 設為 False，
+    # 否則 Secure cookie 不會送出、會強制轉址 https，導致 admin 登不進去。
     SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=True)
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = env.bool("SESSION_COOKIE_SECURE", default=True)
+    CSRF_COOKIE_SECURE = env.bool("CSRF_COOKIE_SECURE", default=True)
     SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=31536000)
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True

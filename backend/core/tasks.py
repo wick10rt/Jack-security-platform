@@ -95,6 +95,7 @@ def launch_instance_task(instance_id_str, lab_id_str, user_id_str):
         return
 
     compose_dir = (settings.BASE_DIR.parent / "instances").resolve()
+    os.makedirs(compose_dir, exist_ok=True)
     compose_file_path = compose_dir / f"docker-compose-{instance_id}.yml"
     project_name = f"instance_{instance_id}"
 
