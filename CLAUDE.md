@@ -55,11 +55,12 @@ npm run format       # prettier
 
 Two `.env` files are required (neither is committed):
 
-- Repo root `.env`: `SECRET_KEY`, `DATABASE_PASSWORD`. Settings reads this from
-  `BASE_DIR.parent`, i.e. the repo root, **not** `backend/`.
+- Repo root `.env`: `SECRET_KEY`, `DATABASE_PASSWORD`, `DEBUG`, `ALLOWED_HOSTS`,
+  `ADMIN_ACCESS_KEY`. Settings reads this from `BASE_DIR.parent`, i.e. the repo
+  root, **not** `backend/`.
 - `frontend/.env`: `VITE_API_BASE_URL` (e.g. `http://127.0.0.1:8000/api`) and
-  `VITE_ADMIN_ACCESS_KEY` — this must match `ALLOWED_QUERY_VALUE` in
-  `backend/core/middleware.py`.
+  `VITE_ADMIN_ACCESS_KEY` — this must match `ADMIN_ACCESS_KEY` in the repo-root
+  `.env` (read in `settings.py` and consumed by `core/middleware.py`).
 
 ## Architecture & Key Flows
 
@@ -71,31 +72,50 @@ work happens in `core/tasks.py`, triggered from `core/views.py`. This is the
 `B4` (靶機分配服務) + `D1`/`D2` (Docker/容器管理) slice of the design.
 
 - **Launch** (`LaunchInstanceView` → `launch_instance_task`, events EE-5/IE-5):
-  the view creates an `ActiveInstance` row with placeholder
-  `instance_url`/`container_id` of `"creating..."` and returns `202 Accepted`
-  immediately. The Celery task then writes a per-instance compose file to
-  `<repo-root>/instances/docker-compose-<id>.yml`, brings it up, and resolves the
-  host-mapped port to fill in the real `instance_url`. The frontend polls
-  `InstanceStatusView` every 3s until the URL is ready.
+  the view creates an `ActiveInstance` row with `status="creating"` (empty
+  `instance_url`/`container_id`) and returns `202 Accepted` immediately. The
+  Celery task builds a per-instance compose file (`build_compose_content`),
+  writes it to `<repo-root>/instances/docker-compose-<id>.yml`, brings it up,
+  resolves the host-mapped port (`<lab.web_service>:<lab.web_port>`) into
+  `instance_url` (host = `INSTANCE_PUBLIC_HOST`), and sets `status="running"`.
+  On failure it sets `status="error"` (row kept so the UI can report it). The
+  frontend polls `InstanceStatusView` every 3s and switches on `status`.
+- **Per-lab compose** (`build_compose_content` in `core/tasks.py`): each `Lab`
+  can carry its own `compose_template` (full docker-compose YAML); if blank, a
+  default web+MySQL template is used (legacy sqli labs). `Lab.web_service` /
+  `Lab.web_port` declare which service/port to expose. The platform **force-
+  injects** hardening onto every service (cpus/mem/pids from `INSTANCE_*`
+  settings, `no-new-privileges`, `restart: no`) and **strips** author-supplied
+  `ports`/`privileged`/`cap_add`, publishing only one controlled
+  `127.0.0.1::<web_port>` on the web service. Labs are pure targets; the answer
+  model stays a fixed-string match (`SubmitAnswerView`), so non-flag vuln types
+  are authored to emit a static flag on success.
 - **Constraints** (enforced in `LaunchInstanceView` inside a
   `select_for_update()` transaction): one active instance per user (C-3); a
-  global cap of `ACTIVEINSTANCE_LIMIT = 30` (C-9); instances expire 30 minutes
-  after creation (C-4).
+  global cap of `settings.ACTIVEINSTANCE_LIMIT` (default 30, C-9); instances
+  expire `settings.INSTANCE_EXPIRY_MINUTES` (default 30) after creation (C-4).
+- **Extend**: `ExtendInstanceView` (`/api/instances/extend/`) pushes `expires_at`
+  out by `INSTANCE_EXTENSION_MINUTES`, up to `INSTANCE_MAX_EXTENSIONS` times.
 - **Teardown**: `terminate_instance_task` (manual, EE-11/IE-11, via
   `TerminateInstanceView`) and `cleanup_expired_instances` (Celery Beat every
-  minute, IE-10) tear down compose projects and delete rows. Cleanup dispatches
-  one `terminate_instance_task` per expired instance.
+  minute, IE-10) tear down compose projects and delete rows. `reconcile_instances`
+  (Beat every 5 min) reconciles Docker↔DB by compose-project label: it kills
+  orphan containers with no DB row and flags rows stuck in `creating` past
+  `INSTANCE_ORPHAN_GRACE_MINUTES` as `error`.
 
 When changing instance behavior, keep the view (sync DB bookkeeping +
-constraints) and the task (actual Docker work) in sync — placeholder values like
-`"creating..."`/`"waiting..."` are load-bearing in the teardown logic.
+constraints) and the task (actual Docker work) in sync via the `status` field
+(`creating`/`running`/`error`).
 
 ### Auth
 
 - JWT via `djangorestframework-simplejwt`. Custom `MyTokenObtainPairView`
   (`core/views.py`) wraps login to return a `redirect_url` and feed django-axes
   brute-force tracking; tokens carry `username` and `is_admin` claims (decoded
-  client-side in `frontend/src/stores/auth.ts`).
+  client-side in `frontend/src/stores/auth.ts`). Routes: `/api/auth/login/`,
+  `/api/auth/token/refresh/`, `/api/auth/logout/`. Logout blacklists the refresh
+  token via the `token_blacklist` app; access token lifetime is 30 min
+  (`ACCESS_TOKEN_MINUTES`).
 - DRF defaults to `IsAuthenticated` globally; public endpoints (`register`,
   `login`) opt out with `AllowAny`.
 - Frontend: `frontend/src/axios.ts` injects the bearer token and transparently
@@ -104,8 +124,10 @@ constraints) and the task (actual Docker work) in sync — placeholder values li
 - Custom `User` model (`AUTH_USER_MODEL = "core.User"`) uses a UUID primary key,
   as do all other models.
 - `HideAdminMiddleware` hides `/admin/` from non-staff: access requires staff
-  auth or a one-time `?admin_key=<VITE_ADMIN_ACCESS_KEY>` query param that sets a
-  session flag; otherwise it returns 404.
+  auth or a one-time `?admin_key=<ADMIN_ACCESS_KEY>` query param that sets a
+  session flag; otherwise it returns 404. The key is read from settings
+  (`ADMIN_ACCESS_KEY`, env-backed); if unset/empty the query-param bypass is
+  disabled entirely.
 
 ### Completion / reflection state machine
 
@@ -157,5 +179,6 @@ primary map. When adding a feature, follow the existing numbering.
   PostgreSQL. Development model is waterfall — design is fixed up front, so
   prefer fitting changes into the existing ID scheme over introducing new
   abstractions.
-- `DEBUG = True` is currently hard-coded in `settings.py` (see the TODO there) —
-  it must be turned off for any real deployment.
+- `DEBUG`, `ALLOWED_HOSTS`, and `ADMIN_ACCESS_KEY` are env-backed in
+  `settings.py` (`DEBUG` defaults to `False`). Set `DEBUG=False` and a real
+  `ALLOWED_HOSTS` for any deployment.
