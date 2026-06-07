@@ -81,8 +81,8 @@ def build_compose_content(lab):
 
 
 
-@shared_task
-def launch_instance_task(instance_id_str, lab_id_str, user_id_str):
+@shared_task(bind=True, max_retries=2, default_retry_delay=5)
+def launch_instance_task(self, instance_id_str, lab_id_str, user_id_str):
     instance_id = uuid.UUID(instance_id_str)
     logger.info(f"開始創建靶機 {instance_id}")
 
@@ -169,6 +169,7 @@ def launch_instance_task(instance_id_str, lab_id_str, user_id_str):
 
     except Exception as e:
         logger.error(f"{instance_id} 啟動失敗: {e}")
+        # 拆除這次的殘留，避免重試時衝突或洩漏
         if compose_file_path.exists():
             subprocess.run(
                 [
@@ -182,7 +183,11 @@ def launch_instance_task(instance_id_str, lab_id_str, user_id_str):
                 ]
             )
             os.remove(compose_file_path)
-        ActiveInstance.objects.filter(id=instance_id).update(status="error")
+        try:
+            raise self.retry(exc=e, countdown=5)
+        except self.MaxRetriesExceededError:
+            logger.error(f"{instance_id} 重試耗盡，標記 error")
+            ActiveInstance.objects.filter(id=instance_id).update(status="error")
 
 
 @shared_task
@@ -234,7 +239,9 @@ def terminate_instance_task(instance_id_str, container_id):
 @shared_task
 def cleanup_expired_instances():
     logger.info("開始清理過期靶機")
-    expired_instances = ActiveInstance.objects.filter(expires_at__lte=timezone.now())
+    expired_instances = ActiveInstance.objects.filter(
+        expires_at__lte=timezone.now()
+    ).select_related("user")
 
     if not expired_instances:
         logger.info("沒有過期靶機")

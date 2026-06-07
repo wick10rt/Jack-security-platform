@@ -97,6 +97,7 @@ class HealthCheckTests(BaseTest):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data["status"], "ok")
         self.assertTrue(res.data["database"])
+        self.assertTrue(res.data["redis"])
 
 
 @override_settings(AUTH_PASSWORD_VALIDATORS=NO_PWNED_VALIDATORS)
@@ -329,6 +330,17 @@ class LaunchInstanceViewTests(BaseTest):
             ActiveInstance.objects.filter(user=self.user).count(), 1
         )
 
+    @patch(
+        "core.views.launch_instance_task.delay",
+        side_effect=Exception("broker down"),
+    )
+    def test_launch_broker_failure_returns_503_and_cleans_row(self, mock_delay):
+        res = self.client.post(reverse("launch-instance", args=[self.lab.id]))
+        self.assertEqual(res.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+        self.assertEqual(
+            ActiveInstance.objects.filter(user=self.user).count(), 0
+        )
+
     @patch("core.views.launch_instance_task.delay")
     def test_relaunch_clears_previous_error(self, mock_delay):
         ActiveInstance.objects.create(
@@ -385,6 +397,21 @@ class ProgressStatsTests(BaseTest):
         self.assertEqual(res.data["total"], 3)
         self.assertEqual(res.data["completed"], 2)
         self.assertEqual(res.data["pending"], 1)
+
+    def test_progress_filter_by_lab(self):
+        user = User.objects.create_user(
+            username="pfuser", password="a-very-long-pass"
+        )
+        lab_a = make_lab()
+        lab_b = make_lab()
+        LabCompletion.objects.create(user=user, lab=lab_a, status="completed")
+        LabCompletion.objects.create(
+            user=user, lab=lab_b, status="pending_reflection"
+        )
+        self.client.force_authenticate(user)
+        res = self.client.get(reverse("user-progress"), {"lab": str(lab_a.id)})
+        self.assertEqual(res.data["count"], 1)
+        self.assertEqual(res.data["results"][0]["status"], "completed")
 
 
 class TerminateInstanceTests(BaseTest):

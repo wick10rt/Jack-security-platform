@@ -53,11 +53,26 @@ class HealthCheckView(generics.GenericAPIView):
         except Exception:
             db_ok = False
 
+        redis_ok = True
+        try:
+            import redis
+
+            redis.from_url(
+                settings.CELERY_BROKER_URL, socket_connect_timeout=1
+            ).ping()
+        except Exception:
+            redis_ok = False
+
+        healthy = db_ok and redis_ok
         http_status = (
-            status.HTTP_200_OK if db_ok else status.HTTP_503_SERVICE_UNAVAILABLE
+            status.HTTP_200_OK if healthy else status.HTTP_503_SERVICE_UNAVAILABLE
         )
         return Response(
-            {"status": "ok" if db_ok else "error", "database": db_ok},
+            {
+                "status": "ok" if healthy else "error",
+                "database": db_ok,
+                "redis": redis_ok,
+            },
             status=http_status,
         )
 
@@ -180,8 +195,13 @@ class UserProgressView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        user = self.request.user
-        return LabCompletion.objects.filter(user=user)
+        qs = LabCompletion.objects.filter(user=self.request.user).select_related(
+            "lab"
+        )
+        lab = self.request.query_params.get("lab")
+        if lab:
+            qs = qs.filter(lab_id=lab)
+        return qs
 
 
 class ProgressStatsView(generics.GenericAPIView):
@@ -290,11 +310,20 @@ class LaunchInstanceView(generics.GenericAPIView):
                 expires_at=expires_at,
             )
 
-        launch_instance_task.delay(
-            instance_id_str=str(instance.id),
-            lab_id_str=str(lab.id),
-            user_id_str=str(user.id),
-        )
+        try:
+            launch_instance_task.delay(
+                instance_id_str=str(instance.id),
+                lab_id_str=str(lab.id),
+                user_id_str=str(user.id),
+            )
+        except Exception as e:
+            logger.error(f"派送 launch 任務失敗（broker 不可用？）: {e}")
+            instance.delete()
+            return Response(
+                {"error": "服務暫時無法處理請求，請稍後再試"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
         logger.info(f"{user.username} 創建 {instance.id}")
 
         serializer = self.get_serializer(instance)

@@ -71,7 +71,7 @@ class ActiveInstance(models.Model):
     )
     lab = models.ForeignKey(Lab, on_delete=models.CASCADE)
     status = models.CharField(
-        max_length=20, choices=status_choices, default="creating"
+        max_length=20, choices=status_choices, default="creating", db_index=True
     )
     instance_url = models.CharField(max_length=255, blank=True, default="")
     container_id = models.CharField(max_length=255, blank=True, default="")
