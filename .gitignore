@@ -37,3 +37,6 @@ backend/celerybeat-schedule*
 
 #忽略靶機檔案
 instances/
+
+# collectstatic 產物
+backend/staticfiles/

@@ -32,6 +32,19 @@ cd Jack-security-platform
 # from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())
 SECRET_KEY='your-key'
 DATABASE_PASSWORD='your-password'
+
+# 本機開發設 True；正式環境務必設 False
+DEBUG=True
+# DEBUG=False 時必填，以逗號分隔，例如: example.com,www.example.com
+ALLOWED_HOSTS=
+# 隱藏的 /admin/ 繞過金鑰，請自行產生高強度隨機值；留空則停用此繞過
+ADMIN_ACCESS_KEY='your-admin-access-key'
+
+# 靶機網路（內網部署）：開發維持 127.0.0.1；內網部署時兩者都設成主機內網 IP
+INSTANCE_BIND_HOST=127.0.0.1
+INSTANCE_PUBLIC_HOST=127.0.0.1
+# 內網無 HTTPS 但 DEBUG=False 時，設 False 以免被強制轉址到 https
+# SECURE_SSL_REDIRECT=False
 ```
 
 在 `frontend/` 創建 `.env` 填入下面的內容:
@@ -39,8 +52,7 @@ DATABASE_PASSWORD='your-password'
 ```dotenv
 # frontend/.env
 
-# 要跟 backend/core/middleware.py → ALLOWED_QUERY_VALUE 的一樣
-# VITE_ADMIN_ACCESS_KEY 預設是 @1121717dogdog1101737fatfat
+# 要跟後端 .env 的 ADMIN_ACCESS_KEY 一致
 VITE_ADMIN_ACCESS_KEY='your-admin-access-key'
 VITE_API_BASE_URL=http://127.0.0.1:8000/api
 ```

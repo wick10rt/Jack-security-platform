@@ -25,9 +25,22 @@ environ.Env.read_env(os.path.join(BASE_DIR.parent, ".env"))
 SECRET_KEY = env("SECRET_KEY")
 
 
-DEBUG = True
+DEBUG = env("DEBUG")
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
+
+ADMIN_ACCESS_KEY = env("ADMIN_ACCESS_KEY", default="")
+
+if not DEBUG:
+    SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=True)
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=31536000)
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 
 
 
@@ -40,6 +53,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
     "core.apps.CoreConfig",
     "axes",
 ]
@@ -48,6 +62,7 @@ MIDDLEWARE = [
     "axes.middleware.AxesMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -62,6 +77,13 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+    "DEFAULT_THROTTLE_CLASSES": (
+        "rest_framework.throttling.ScopedRateThrottle",
+    ),
+    "DEFAULT_THROTTLE_RATES": {
+        "register": env("THROTTLE_REGISTER", default="10/hour"),
+        "submit_answer": env("THROTTLE_SUBMIT_ANSWER", default="30/min"),
+    },
 }
 
 ROOT_URLCONF = "myproject.urls"
@@ -88,11 +110,12 @@ WSGI_APPLICATION = "myproject.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "platform_db",
-        "USER": "platform_user",
+        "NAME": env("DATABASE_NAME", default="platform_db"),
+        "USER": env("DATABASE_USER", default="platform_user"),
         "PASSWORD": env("DATABASE_PASSWORD"),
-        "HOST": "127.0.0.1",
-        "PORT": "25000",
+        "HOST": env("DATABASE_HOST", default="127.0.0.1"),
+        "PORT": env("DATABASE_PORT", default="25000"),
+        "CONN_MAX_AGE": env.int("DATABASE_CONN_MAX_AGE", default=60),
     }
 }
 
@@ -132,9 +155,9 @@ AUTH_PASSWORD_VALIDATORS = [
 
 
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "zh-hant"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "Asia/Taipei"
 
 USE_I18N = True
 
@@ -143,6 +166,15 @@ USE_TZ = True
 
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
@@ -150,7 +182,9 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "core.User"
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=180),
+    "ACCESS_TOKEN_LIFETIME": timedelta(
+        minutes=env.int("ACCESS_TOKEN_MINUTES", default=30)
+    ),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
 }
 
@@ -162,10 +196,10 @@ AXES_USE_ADMIN_SITE = True
 AXES_LOCKOUT_PARAMETERS = ["username"]
 
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
+CORS_ALLOWED_ORIGINS = env.list(
+    "CORS_ALLOWED_ORIGINS",
+    default=["http://localhost:5173", "http://127.0.0.1:5173"],
+)
 CORS_EXPOSE_HEADERS = ["Location"]
 
 CORS_ALLOW_METHODS = [
@@ -186,8 +220,10 @@ CORS_ALLOW_HEADERS = [
     "x-requested-with",
 ]
 
-CELERY_BROKER_URL = "redis://127.0.0.1:6379/0"
-CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379/0"
+CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://127.0.0.1:6379/0")
+CELERY_RESULT_BACKEND = env(
+    "CELERY_RESULT_BACKEND", default="redis://127.0.0.1:6379/0"
+)
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
@@ -197,5 +233,59 @@ CELERY_BEAT_SCHEDULE = {
     "cleanup_instances_every_minute": {
         "task": "core.tasks.cleanup_expired_instances",
         "schedule": crontab(),
+    },
+    "reconcile_instances_every_5_minutes": {
+        "task": "core.tasks.reconcile_instances",
+        "schedule": crontab(minute="*/5"),
+    },
+}
+
+
+ACTIVEINSTANCE_LIMIT = env.int("ACTIVEINSTANCE_LIMIT", default=30)
+INSTANCE_EXPIRY_MINUTES = env.int("INSTANCE_EXPIRY_MINUTES", default=30)
+INSTANCE_WEB_CPUS = env.float("INSTANCE_WEB_CPUS", default=0.5)
+INSTANCE_WEB_MEM = env("INSTANCE_WEB_MEM", default="512m")
+INSTANCE_DB_CPUS = env.float("INSTANCE_DB_CPUS", default=1.0)
+INSTANCE_DB_MEM = env("INSTANCE_DB_MEM", default="512m")
+INSTANCE_DB_IMAGE = env("INSTANCE_DB_IMAGE", default="mysql:8.0")
+INSTANCE_PIDS_LIMIT = env.int("INSTANCE_PIDS_LIMIT", default=256)
+
+INSTANCE_BIND_HOST = env("INSTANCE_BIND_HOST", default="127.0.0.1")
+INSTANCE_PUBLIC_HOST = env("INSTANCE_PUBLIC_HOST", default="127.0.0.1")
+INSTANCE_MAX_EXTENSIONS = env.int("INSTANCE_MAX_EXTENSIONS", default=2)
+INSTANCE_EXTENSION_MINUTES = env.int("INSTANCE_EXTENSION_MINUTES", default=30)
+INSTANCE_ORPHAN_GRACE_MINUTES = env.int("INSTANCE_ORPHAN_GRACE_MINUTES", default=5)
+
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {name} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": env("LOG_LEVEL", default="INFO"),
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": env("DJANGO_LOG_LEVEL", default="INFO"),
+            "propagate": False,
+        },
+        "core": {
+            "handlers": ["console"],
+            "level": env("LOG_LEVEL", default="INFO"),
+            "propagate": False,
+        },
     },
 }
