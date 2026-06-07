@@ -57,7 +57,7 @@ docker compose ps           # 確認兩個 container 都 Up
 python3 -c "from secrets import token_urlsafe; print('SECRET_KEY=', token_urlsafe(50)); print('ADMIN_ACCESS_KEY=', token_urlsafe(24))"
 ```
 
-在**專案根目錄**建立 `.env`：
+在**專案根目錄**建立 `.env`（可 `cp .env.example .env` 後改值）：
 
 ```dotenv
 # === 必填 ===
@@ -97,8 +97,7 @@ CORS_ALLOWED_ORIGINS=http://<HOST_IP>
 cd backend
 python3 -m venv venv
 source venv/bin/activate
-pip install -r ../requirements.txt
-pip install gunicorn                 # 正式環境用 gunicorn 跑
+pip install -r ../requirements.txt   # 已含 gunicorn
 
 python manage.py migrate
 python manage.py createsuperuser     # 建立管理員（F5 用）

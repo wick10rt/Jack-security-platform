@@ -41,10 +41,11 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # Django 靜態檔（admin CSS 等，由 whitenoise 提供）
+    # Django 靜態檔（admin CSS 等）：collectstatic 後由 nginx 直接服務（較快）
     location /static/ {
-        proxy_pass http://jack_backend;
-        proxy_set_header Host $host;
+        alias <你的 backend/staticfiles 絕對路徑，結尾要有 />/;
+        access_log off;
+        expires 7d;
     }
 
     # 前端 history-mode 路由 fallback
