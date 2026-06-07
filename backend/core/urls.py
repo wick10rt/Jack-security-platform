@@ -1,5 +1,6 @@
 from django.urls import path
 from .views import (
+    HealthCheckView,
     LabListView,
     LabDetailView,
     UserProgressView,
@@ -11,11 +12,17 @@ from .views import (
     MyTokenObtainPairView,
     AccessInstanceView,
     TerminateInstanceView,
+    ExtendInstanceView,
     InstanceStatusView,
 )
 
 
 urlpatterns = [
+    path(
+        "health/",
+        HealthCheckView.as_view(),
+        name="health-check",
+    ),
     path(
         "progress/",
         UserProgressView.as_view(),
@@ -65,5 +72,10 @@ urlpatterns = [
         "instances/terminate/",
         TerminateInstanceView.as_view(),
         name="terminate-instance",
+    ),
+    path(
+        "instances/extend/",
+        ExtendInstanceView.as_view(),
+        name="extend-instance",
     ),
 ]

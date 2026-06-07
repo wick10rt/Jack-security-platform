@@ -16,8 +16,11 @@ from rest_framework import generics, permissions, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework.serializers import ValidationError
 from .models import Lab, User, LabCompletion, ActiveInstance, CommunitySolution
+from .permissions import IsInstanceOwner
 from .serializers import (
     LabSerializer,
     LabDetailSerializer,
@@ -37,10 +40,33 @@ logger = logging.getLogger(__name__)
 
 
 
+class HealthCheckView(generics.GenericAPIView):
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = []
+
+    def get(self, request, *args, **kwargs):
+        db_ok = True
+        try:
+            from django.db import connection
+
+            connection.ensure_connection()
+        except Exception:
+            db_ok = False
+
+        http_status = (
+            status.HTTP_200_OK if db_ok else status.HTTP_503_SERVICE_UNAVAILABLE
+        )
+        return Response(
+            {"status": "ok" if db_ok else "error", "database": db_ok},
+            status=http_status,
+        )
+
+
 class UserRegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserRegisterSerializer
     permission_classes = [permissions.AllowAny]
+    throttle_scope = "register"
 
 
 @method_decorator(axes_dispatch, name="dispatch")
@@ -74,6 +100,26 @@ class MyTokenObtainPairView(TokenObtainPairView):
         return response
 
 
+
+
+class LogoutView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        refresh = request.data.get("refresh")
+        if not refresh:
+            return Response(
+                {"error": "缺少 refresh token"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            RefreshToken(refresh).blacklist()
+        except TokenError:
+            return Response(
+                {"error": "無效的 token"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response({"detail": "已登出"}, status=status.HTTP_200_OK)
 
 
 class LabListView(generics.ListAPIView):
@@ -169,7 +215,6 @@ class ReflectionView(generics.GenericAPIView):
 class LaunchInstanceView(generics.GenericAPIView):
     serializer_class = ActiveInstanceSerializer
     permission_classes = [IsAuthenticated]
-    ACTIVEINSTANCE_LIMIT = 30
 
     def post(self, request, *args, **kwargs):
         lab_id = self.kwargs.get("id")
@@ -179,27 +224,36 @@ class LaunchInstanceView(generics.GenericAPIView):
         with transaction.atomic():
             qs = ActiveInstance.objects.select_for_update()
 
-            if qs.filter(user=user, expires_at__gt=timezone.now()).exists():
+            qs.filter(user=user, status="error").delete()
+
+            if (
+                qs.filter(user=user, expires_at__gt=timezone.now())
+                .exclude(status="error")
+                .exists()
+            ):
                 return Response(
                     {"error": "你已經有一個運行中的靶機了"},
                     status=status.HTTP_409_CONFLICT,
                 )
 
-            current_active_count = qs.filter(expires_at__gt=timezone.now()).count()
-            if current_active_count >= self.ACTIVEINSTANCE_LIMIT:
+            current_active_count = (
+                qs.filter(expires_at__gt=timezone.now())
+                .exclude(status="error")
+                .count()
+            )
+            if current_active_count >= settings.ACTIVEINSTANCE_LIMIT:
                 return Response(
                     {"error": "伺服器忙碌中，請稍後再試"},
                     status=status.HTTP_503_SERVICE_UNAVAILABLE,
                 )
 
             expires_at = timezone.now() + timedelta(
-                minutes=30
+                minutes=settings.INSTANCE_EXPIRY_MINUTES
             )
             instance = ActiveInstance.objects.create(
                 user=user,
                 lab=lab,
-                instance_url="creating...",
-                container_id="creating...",
+                status="creating",
                 expires_at=expires_at,
             )
 
@@ -212,6 +266,40 @@ class LaunchInstanceView(generics.GenericAPIView):
 
         serializer = self.get_serializer(instance)
         return Response(serializer.data, status=status.HTTP_202_ACCEPTED)
+
+
+class ExtendInstanceView(generics.GenericAPIView):
+    serializer_class = ActiveInstanceSerializer
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        with transaction.atomic():
+            instance = (
+                ActiveInstance.objects.select_for_update()
+                .filter(user=user)
+                .exclude(status="error")
+                .first()
+            )
+            if not instance:
+                return Response(
+                    {"error": "沒有找到你的靶機"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            if instance.extensions_used >= settings.INSTANCE_MAX_EXTENSIONS:
+                return Response(
+                    {"error": "已達延長次數上限"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            base = max(instance.expires_at, timezone.now())
+            instance.expires_at = base + timedelta(
+                minutes=settings.INSTANCE_EXTENSION_MINUTES
+            )
+            instance.extensions_used += 1
+            instance.save(update_fields=["expires_at", "extensions_used"])
+
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class TerminateInstanceView(generics.GenericAPIView):
@@ -242,30 +330,19 @@ class TerminateInstanceView(generics.GenericAPIView):
 
 
 class InstanceStatusView(generics.RetrieveAPIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsInstanceOwner]
     queryset = ActiveInstance.objects.all()
     serializer_class = ActiveInstanceSerializer
     lookup_field = "id"
 
-    def get(self, request, *args, **kwargs):
-        instance = self.get_object()
-
-        if instance.user != request.user:
-            return Response({"error": "禁止進入"}, status=status.HTTP_403_FORBIDDEN)
-
-        return super().get(request, *args, **kwargs)
-
 
 class AccessInstanceView(generics.GenericAPIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsInstanceOwner]
+    queryset = ActiveInstance.objects.all()
+    lookup_field = "id"
 
     def get(self, request, *args, **kwargs):
-        instance_id = self.kwargs.get("id")
-        instance = get_object_or_404(ActiveInstance, id=instance_id)
-
-        if instance.user != request.user:
-            return Response({"error": "禁止進入"}, status=status.HTTP_403_FORBIDDEN)
-
+        instance = self.get_object()
         return Response(
             {"target_url": instance.instance_url}, status=status.HTTP_200_OK
         )
@@ -276,6 +353,7 @@ class AccessInstanceView(generics.GenericAPIView):
 class SubmitAnswerView(generics.GenericAPIView):
     serializer_class = SubmissionSerializer
     permission_classes = [IsAuthenticated]
+    throttle_scope = "submit_answer"
 
     def post(self, request, *args, **kwargs):
         lab_id = self.kwargs.get("id")
