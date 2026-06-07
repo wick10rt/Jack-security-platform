@@ -301,12 +301,9 @@ const {
 } = useSolutions(labId, submissionStatus)
 
 const {
-  instanceUrl,
   instanceStatus,
   isCreating,
   extensionsUsed,
-  hasAnyInstance,
-  isCurrentLabActive,
   isLaunching,
   isTerminating,
   launchError,

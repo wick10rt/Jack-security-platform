@@ -37,27 +37,35 @@
 - ✅ **N-28 時區一致性** — `TIME_ZONE=Asia/Taipei` 對齊 Celery。
 - ✅ **N-33 i18n** — `LANGUAGE_CODE=zh-hant`。
 - ✅ **(順手) CORS / Celery broker URL env 化** — 部署靈活性。
-
-部分完成：
-- 🟦 **N-24** — 已加容器 `pids_limit`（擋 fork bomb）+ build 時移除 `privileged`/`cap_add`；**egress 防火牆 + 主動 `cap_drop:ALL` 仍待基建處理**（見下）。
+- ✅ **N-30 CI/CD** — `.github/workflows/ci.yml`：後端 test（CI 起 postgres+redis 用 env 接）+ 前端 type-check + build。
+- ✅ **N-31 監控** — 整合 Sentry：後端 `settings`(Django+Celery integration，`SENTRY_DSN` 啟用) + 前端 `main.ts`(`VITE_SENTRY_DSN`)；未設 DSN 完全 no-op。
+- ✅ **N-32 SPA serve** — `deploy/nginx.conf.example`：服務 `dist/` + 反代 `/api` `/admin` `/static`，HTTP + SPA fallback。
+- ✅ **P1-11/N-24 濫用防護** — `deploy/egress-firewall.sh.example`（DOCKER-USER 封容器外連、放行回程）+ 既有 `no-new-privileges`/`pids_limit`/移除 `privileged`+`cap_add`/資源限制。**cap_drop 決議先不做**（egress 防火牆已達成擋跳板/挖礦目標，cap_drop:ALL 破壞風險高）。
 
 ---
 
-## 🔴 剩餘項目 — 多為基建/主機操作，需你環境權限或決策
+## ✅ 已決議結案 / 不做
 
-- [ ] **P1-11(剩)/N-24(剩) 濫用防護（egress 防火牆）** — 主機 nftables 封靶機網段對外連線 + 視情況 `cap_drop:ALL`。內網單機可做，但要在部署主機上設防火牆規則，需你權限與時機。
-- [ ] **N-26 現成鏡像來源信任** — 鏡像從哪來？白名單 or 私有 registry + 簽章？
-- [ ] **P2-21 port 耗盡處理** — port 範圍管理 / fallback（單機 + 容量上限下風險低，優先度中）。
-- [ ] **N-30 CI/CD** — 用哪個平台（GitHub Actions？）跑什麼（lint/test/build/deploy）？
-- [ ] **N-31 監控告警 / metrics** — 要到什麼程度？用什麼（Prometheus/Grafana/Sentry）？
-- [ ] **N-32 SPA 正式環境 serve** — 由 nginx 服務前端 `dist/` build（內網單機可與後端同機 nginx 反代 API）。
-- [ ] **N-34 secrets 管理** — 純 `.env` 是否夠？要不要 vault / 加密儲存？
-- [ ] **N-35 防作弊（低優先）** — 答案分享 / 多開帳號 / 抄襲社群解法。已說優先度低，先掛著。
+- **N-24 cap_drop** — 先不做（egress 防火牆已達成擋跳板/挖礦，cap_drop:ALL 破壞風險高）。
+- **N-26 鏡像來源信任** — 管理員為本人、自行判斷鏡像安全，不做程式強制。
+- **N-34 secrets 管理** — 內網單機，主機 `.env`(權限 600) 已足夠，不導入 vault。
+- **P2-21 port 耗盡** — 單機 + 容量上限 30 下風險極低，不處理。
+- **N-35 防作弊（低優先）** — 答案分享 / 多開帳號 / 抄襲社群解法，先擱置。
+
+---
+
+## 📋 剩餘皆為部署時的手動動作（非程式碼）
+
+- 套用 `deploy/egress-firewall.sh.example`（主機 root，並持久化）
+- 套用 `deploy/nginx.conf.example`（填值後放 /etc/nginx/conf.d/）
+- 設 `SENTRY_DSN` / `VITE_SENTRY_DSN`（要啟用監控時）
+- ⚠️ **輪換祕密**：`.env` 換上全新 `SECRET_KEY` 與 `ADMIN_ACCESS_KEY`（舊值已洩漏在 git 歷史）
 
 ---
 
 ## 決策紀錄
 
 - 答案模型維持固定字串（Q1/Q12）；**每個 lab 個案處理 docker，無天生固定答案者由出題者設計成攻擊成功後吐出固定 flag，lab 純當靶機**；單機部署（Q4）；**只在內網使用** → 免反向代理，靶機 port 綁主機內網 IP；接受啟動全域序列化（Q5）；不做備份（Q11）；忘記密碼=重辦（Q8）；容量依硬體（Q3）；新題用現成 docker（Q6）、題型越多越好（Q7）。
-- **部署提醒（內網）**：`.env` 設 `INSTANCE_BIND_HOST` 與 `INSTANCE_PUBLIC_HOST` = 主機內網 IP；若內網無 HTTPS 但仍想 `DEBUG=False`，設 `SECURE_SSL_REDIRECT=False`（否則會強制轉址 https）。
+- **部署提醒（內網）**：`.env` 設 `INSTANCE_BIND_HOST` 與 `INSTANCE_PUBLIC_HOST` = 主機內網 IP；前端 nginx 同機 HTTP，故 `DEBUG=False` 時要設 `SECURE_SSL_REDIRECT=False`（否則強制轉址 https）。
+- **基建決策（2026-06-07 grill）**：N-26 信任管理員自判鏡像、不強制；N-24 靶機完全封鎖外連 + cap_drop:ALL；N-31 用 Sentry；N-32 nginx 同機 HTTP；N-30 GitHub Actions；N-34 `.env` 即可。
 - ⚠️ **尚未輪換的祕密**：洩漏在 git 歷史的舊 `SECRET_KEY` 與舊 admin 金鑰 `@1121717...`，正式上線前務必在 `.env` 換成全新值（程式碼已就緒，值需你自己填）。
