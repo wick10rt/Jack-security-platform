@@ -15,10 +15,39 @@ class Lab(models.Model):
     description = models.TextField()
     category = models.CharField(max_length=100)
     solution = models.TextField()
-    docker_image = models.CharField(max_length=255)
-    compose_template = models.TextField(blank=True, default="")
-    web_service = models.CharField(max_length=100, default="web")
-    web_port = models.PositiveIntegerField(default=80)
+    docker_image = models.CharField(
+        max_length=255,
+        help_text="單一容器靶機的 web 鏡像。多服務題改用下方 compose_template。",
+    )
+    compose_template = models.TextField(
+        blank=True,
+        default="",
+        help_text=(
+            "留空 → 依 needs_db/db_image 自動產生 web(+mysql)。"
+            "多服務（php+nginx、postgres…）在此貼完整 docker-compose YAML。"
+            "對外服務設為 web_service；其餘自動內部互通。"
+            "設定/程式碼需烤進鏡像（平台不掛主機檔），"
+            "平台只對外開 web_service:web_port 並強制套用資源/安全限制。"
+        ),
+    )
+    web_service = models.CharField(
+        max_length=100,
+        default="web",
+        help_text="compose 中要對使用者開埠的服務名稱。",
+    )
+    web_port = models.PositiveIntegerField(
+        default=80,
+        help_text="對外服務在容器內監聽的埠。",
+    )
+    needs_db = models.BooleanField(
+        default=True,
+        help_text="compose_template 留空時是否附加一個 mysql 容器。不需 DB 的題取消勾選。",
+    )
+    db_image = models.CharField(
+        max_length=255,
+        default="mysql:8.0",
+        help_text="compose_template 留空且 needs_db 時使用的 DB 鏡像（如 mysql:5.6）。",
+    )
 
     def __str__(self):
         return self.title

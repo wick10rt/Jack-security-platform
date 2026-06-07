@@ -82,9 +82,14 @@ work happens in `core/tasks.py`, triggered from `core/views.py`. This is the
   On failure it sets `status="error"` (row kept so the UI can report it). The
   frontend polls `InstanceStatusView` every 3s and switches on `status`.
 - **Per-lab compose** (`build_compose_content` in `core/tasks.py`): each `Lab`
-  can carry its own `compose_template` (full docker-compose YAML); if blank, a
-  default web+MySQL template is used (legacy sqli labs). `Lab.web_service` /
-  `Lab.web_port` declare which service/port to expose. The platform **force-
+  can carry its own `compose_template` (full docker-compose YAML) for arbitrary
+  multi-service stacks; if blank, `default_compose_dict(lab)` **dynamically
+  builds** the compose from structured fields — `needs_db` (bool; False → web
+  container only) and `db_image` (e.g. `mysql:5.6`; mysql images also get the
+  `mysql_native_password` command for legacy PHP). `Lab.web_service` /
+  `Lab.web_port` declare which service/port to expose; any extra services in a
+  custom template run internally (reachable by service name) but are not
+  published to the user. The platform **force-
   injects** hardening onto every service (cpus/mem/pids from `INSTANCE_*`
   settings, `no-new-privileges`, `restart: no`) and **strips** author-supplied
   `ports`/`privileged`/`cap_add`, publishing only one controlled

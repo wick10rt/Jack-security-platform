@@ -14,42 +14,57 @@ from .models import ActiveInstance, Lab, User
 logger = logging.getLogger(__name__)
 
 
-DEFAULT_COMPOSE_TEMPLATE = """
-services:
-  web:
-    image: {image}
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      - DB_HOST=db
-      - DB_USER=root
-      - DB_PASSWORD=root
-      - DB_NAME=security
-  db:
-    image: {db_image}
-    command: --default-authentication-plugin=mysql_native_password
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: security
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
-      interval: 5s
-      timeout: 5s
-      retries: 24
-      start_period: 20s
-"""
+def default_compose_dict(lab):
+    """依 Lab 欄位動態組出預設 compose（不再維護整段 YAML 字串）。"""
+    web = {"image": lab.docker_image}
+    services = {lab.web_service: web}
+
+    if lab.needs_db:
+        db_image = lab.db_image or settings.INSTANCE_DB_IMAGE
+        web["environment"] = [
+            "DB_HOST=db",
+            "DB_USER=root",
+            "DB_PASSWORD=root",
+            "DB_NAME=security",
+        ]
+        web["depends_on"] = {"db": {"condition": "service_healthy"}}
+
+        db = {
+            "image": db_image,
+            "environment": {
+                "MYSQL_ROOT_PASSWORD": "root",
+                "MYSQL_DATABASE": "security",
+            },
+            "healthcheck": {
+                "test": [
+                    "CMD",
+                    "mysqladmin",
+                    "ping",
+                    "-h",
+                    "localhost",
+                    "-uroot",
+                    "-proot",
+                ],
+                "interval": "5s",
+                "timeout": "5s",
+                "retries": 24,
+                "start_period": "20s",
+            },
+        }
+        # mysql 8+ 預設 caching_sha2，舊版 PHP 連不上，補上 native_password
+        if db_image.startswith("mysql:"):
+            db["command"] = "--default-authentication-plugin=mysql_native_password"
+        services["db"] = db
+
+    return {"services": services}
 
 
 def build_compose_content(lab):
     if lab.compose_template.strip():
-        raw = lab.compose_template
+        data = yaml.safe_load(lab.compose_template)
     else:
-        raw = DEFAULT_COMPOSE_TEMPLATE.format(
-            image=lab.docker_image, db_image=settings.INSTANCE_DB_IMAGE
-        )
+        data = default_compose_dict(lab)
 
-    data = yaml.safe_load(raw)
     if not isinstance(data, dict) or not isinstance(data.get("services"), dict):
         raise ValueError("compose 內容缺少 services 區塊")
 

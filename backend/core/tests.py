@@ -53,6 +53,22 @@ class BuildComposeTests(SimpleTestCase):
         self.assertIn("pids_limit", web)
         self.assertIn("db", data["services"])
 
+    def test_needs_db_false_produces_web_only(self):
+        lab = Lab(docker_image="example/xss:1.0", needs_db=False)
+        data = yaml.safe_load(build_compose_content(lab))
+        self.assertEqual(list(data["services"].keys()), ["web"])
+
+    def test_db_image_is_respected(self):
+        lab = Lab(docker_image="example/sqli:1.0", db_image="mysql:5.6")
+        data = yaml.safe_load(build_compose_content(lab))
+        self.assertEqual(data["services"]["db"]["image"], "mysql:5.6")
+        self.assertIn("command", data["services"]["db"])
+
+    def test_non_mysql_db_image_skips_native_password(self):
+        lab = Lab(docker_image="example/app:1.0", db_image="mariadb:11")
+        data = yaml.safe_load(build_compose_content(lab))
+        self.assertNotIn("command", data["services"]["db"])
+
     def test_custom_template_strips_unsafe_keys_and_host_ports(self):
         lab = Lab(
             docker_image="ignored",
