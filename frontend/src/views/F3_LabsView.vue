@@ -5,6 +5,27 @@
       <p class="page-subtitle">來跟張胖胖一起學習</p>
     </div>
 
+    <div class="filter-bar fade-in">
+      <input
+        v-model="search"
+        class="filter-input"
+        type="text"
+        placeholder="搜尋實驗標題或描述…"
+        @keyup.enter="applyFilters"
+      />
+      <select v-model="category" class="filter-select" @change="applyFilters">
+        <option value="">全部分類</option>
+        <option v-for="c in categories" :key="c" :value="c">{{ c }}</option>
+      </select>
+      <select v-model="ordering" class="filter-select" @change="applyFilters">
+        <option value="title">標題 ↑</option>
+        <option value="-title">標題 ↓</option>
+        <option value="category">分類 ↑</option>
+        <option value="-category">分類 ↓</option>
+      </select>
+      <button class="btn btn-primary filter-btn" @click="applyFilters">搜尋</button>
+    </div>
+
     <div v-if="isLoading" class="loading-container fade-in">
       <div class="spinner"></div>
       <p class="loading-text">正在載入實驗列表...</p>
@@ -66,8 +87,22 @@ import { RouterLink } from 'vue-router'
 import { getLabList } from '@/composables/B2_useGetLabs'
 import PaginationControls from '@/components/PaginationControls.vue'
 
-const { labs, isLoading, error, currentPage, totalPages, hasNext, hasPrev, nextPage, prevPage } =
-  getLabList()
+const {
+  labs,
+  isLoading,
+  error,
+  search,
+  category,
+  ordering,
+  categories,
+  applyFilters,
+  currentPage,
+  totalPages,
+  hasNext,
+  hasPrev,
+  nextPage,
+  prevPage,
+} = getLabList()
 </script>
 
 <style scoped>
@@ -98,6 +133,45 @@ const { labs, isLoading, error, currentPage, totalPages, hasNext, hasPrev, nextP
   color: var(--text);
   opacity: 0.7;
   letter-spacing: 1px;
+}
+
+.filter-bar {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.filter-input {
+  flex: 1;
+  min-width: 220px;
+  padding: 0.7rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-base);
+  background: var(--white);
+  color: var(--text);
+}
+
+.filter-select {
+  padding: 0.7rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  color: var(--text);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.filter-input:focus,
+.filter-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.filter-btn {
+  padding: 0.7rem 1.5rem;
 }
 
 .loading-container {

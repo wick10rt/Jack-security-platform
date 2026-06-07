@@ -2,6 +2,7 @@ from django.urls import path
 from .views import (
     HealthCheckView,
     LabListView,
+    LabCategoriesView,
     LabDetailView,
     UserProgressView,
     ProgressStatsView,
@@ -38,6 +39,11 @@ urlpatterns = [
         "labs/",
         LabListView.as_view(),
         name="lab-list",
+    ),
+    path(
+        "labs/categories/",
+        LabCategoriesView.as_view(),
+        name="lab-categories",
     ),
     path(
         "labs/<uuid:id>/",

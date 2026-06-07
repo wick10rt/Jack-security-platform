@@ -21,6 +21,11 @@ export function getLabList() {
   const isLoading = ref(true)
   const error = ref<string | null>(null)
 
+  const search = ref('')
+  const category = ref('')
+  const ordering = ref('title')
+  const categories = ref<string[]>([])
+
   const currentPage = ref(1)
   const totalCount = ref(0)
   const hasNext = ref(false)
@@ -32,7 +37,12 @@ export function getLabList() {
     error.value = null
     try {
       const response = await axios.get<Paginated<LabSummary>>('/labs/', {
-        params: { page },
+        params: {
+          page,
+          search: search.value || undefined,
+          category: category.value || undefined,
+          ordering: ordering.value,
+        },
       })
       labs.value = response.data.results
       totalCount.value = response.data.count
@@ -47,6 +57,18 @@ export function getLabList() {
     }
   }
 
+  const fetchCategories = async () => {
+    try {
+      const response = await axios.get<string[]>('/labs/categories/')
+      categories.value = response.data
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  // 篩選/搜尋/排序改變時回到第一頁
+  const applyFilters = () => fetchLabs(1)
+
   const nextPage = () => {
     if (hasNext.value) fetchLabs(currentPage.value + 1)
   }
@@ -54,12 +76,20 @@ export function getLabList() {
     if (hasPrev.value) fetchLabs(currentPage.value - 1)
   }
 
-  onMounted(() => fetchLabs(1))
+  onMounted(() => {
+    fetchCategories()
+    fetchLabs(1)
+  })
 
   return {
     labs,
     isLoading,
     error,
+    search,
+    category,
+    ordering,
+    categories,
+    applyFilters,
     fetchLabs,
     currentPage,
     totalPages,

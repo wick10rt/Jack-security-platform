@@ -12,7 +12,7 @@ from datetime import timedelta
 from django.db import transaction
 from django.conf import settings
 from django.http import HttpResponseRedirect, HttpResponseForbidden
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions, status, filters
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -123,8 +123,28 @@ class LogoutView(generics.GenericAPIView):
 
 
 class LabListView(generics.ListAPIView):
-    queryset = Lab.objects.all().order_by("title")
     serializer_class = LabSerializer
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["title", "description"]
+    ordering_fields = ["title", "category"]
+    ordering = ["title"]
+
+    def get_queryset(self):
+        qs = Lab.objects.all()
+        category = self.request.query_params.get("category")
+        if category:
+            qs = qs.filter(category=category)
+        return qs
+
+
+class LabCategoriesView(generics.GenericAPIView):
+    def get(self, request, *args, **kwargs):
+        categories = list(
+            Lab.objects.order_by("category")
+            .values_list("category", flat=True)
+            .distinct()
+        )
+        return Response(categories, status=status.HTTP_200_OK)
 
 
 class LabDetailView(generics.RetrieveAPIView):

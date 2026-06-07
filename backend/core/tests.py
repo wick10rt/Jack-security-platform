@@ -206,6 +206,13 @@ class ReflectionTests(BaseTest):
             CommunitySolution.objects.filter(user=self.user, lab=self.lab).exists()
         )
 
+    def test_reflection_payload_length_capped(self):
+        res = self.client.post(
+            reverse("submit-reflection", args=[self.lab.id]),
+            {"payload": "x" * 2001, "reflection": "ok"},
+        )
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_reflection_without_completion_rejected(self):
         other_lab = make_lab()
         res = self.client.post(
@@ -338,6 +345,31 @@ class LaunchInstanceViewTests(BaseTest):
             )
         )
         self.assertEqual(statuses, ["creating"])
+
+
+class LabFilterTests(BaseTest):
+    def setUp(self):
+        super().setUp()
+        self.user = User.objects.create_user(
+            username="labuser", password="a-very-long-pass"
+        )
+        make_lab(title="SQL Injection Basic", category="sqli")
+        make_lab(title="XSS Reflected", category="xss")
+        make_lab(title="SQL Blind", category="sqli")
+        self.client.force_authenticate(self.user)
+
+    def test_search_by_title(self):
+        res = self.client.get(reverse("lab-list"), {"search": "XSS"})
+        self.assertEqual(res.data["count"], 1)
+
+    def test_filter_by_category(self):
+        res = self.client.get(reverse("lab-list"), {"category": "sqli"})
+        self.assertEqual(res.data["count"], 2)
+
+    def test_categories_endpoint(self):
+        res = self.client.get(reverse("lab-categories"))
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(sorted(res.data), ["sqli", "xss"])
 
 
 class ProgressStatsTests(BaseTest):
