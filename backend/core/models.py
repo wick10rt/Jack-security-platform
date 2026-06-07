@@ -77,7 +77,7 @@ class ActiveInstance(models.Model):
     container_id = models.CharField(max_length=255, blank=True, default="")
     extensions_used = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
-    expires_at = models.DateTimeField()
+    expires_at = models.DateTimeField(db_index=True)
 
     def __str__(self):
         return f"{self.user.username} create a {self.lab.title} instance"

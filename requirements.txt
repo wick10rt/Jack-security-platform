@@ -16,6 +16,7 @@ django-cors-headers==4.9.0
 django-environ==0.12.0
 django-pwned-passwords==4.1.0
 djangorestframework==3.16.1
+gunicorn==26.0.0
 djangorestframework_simplejwt==5.5.1
 h11==0.16.0
 httpcore==1.0.9

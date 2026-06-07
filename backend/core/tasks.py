@@ -249,9 +249,52 @@ def cleanup_expired_instances():
     return f"開始 {len(expired_instances)} 個清理任務"
 
 
+def _teardown_compose_project(project, instance_id_str):
+    compose_dir = (settings.BASE_DIR.parent / "instances").resolve()
+    compose_file_path = compose_dir / f"docker-compose-{instance_id_str}.yml"
+    try:
+        if compose_file_path.exists():
+            subprocess.run(
+                [
+                    "docker-compose",
+                    "-p",
+                    project,
+                    "-f",
+                    str(compose_file_path),
+                    "down",
+                    "-v",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            os.remove(compose_file_path)
+        else:
+            ids = subprocess.run(
+                [
+                    "docker",
+                    "ps",
+                    "-aq",
+                    "--filter",
+                    f"label=com.docker.compose.project={project}",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            ).stdout.split()
+            if ids:
+                subprocess.run(
+                    ["docker", "rm", "-f", *ids],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
+    except Exception as e:
+        logger.error(f"拆除 {project} 失敗: {e}")
+
+
 @shared_task
 def reconcile_instances():
-    compose_dir = (settings.BASE_DIR.parent / "instances").resolve()
     grace = timezone.now() - timedelta(
         minutes=settings.INSTANCE_ORPHAN_GRACE_MINUTES
     )
@@ -260,7 +303,9 @@ def reconcile_instances():
         ActiveInstance.objects.filter(status="creating", created_at__lt=grace)
     )
     for inst in stuck:
-        logger.warning(f"靶機 {inst.id} 卡在 creating 逾時，標記 error")
+        instance_id_str = str(inst.id)
+        logger.warning(f"靶機 {instance_id_str} 卡在 creating 逾時，拆除並標記 error")
+        _teardown_compose_project(f"instance_{instance_id_str}", instance_id_str)
         inst.status = "error"
         inst.save(update_fields=["status"])
 
@@ -293,45 +338,6 @@ def reconcile_instances():
     for project in orphans:
         instance_id_str = project[len("instance_"):]
         logger.warning(f"發現孤兒靶機 {project}，清除中")
-        compose_file_path = compose_dir / f"docker-compose-{instance_id_str}.yml"
-        try:
-            if compose_file_path.exists():
-                subprocess.run(
-                    [
-                        "docker-compose",
-                        "-p",
-                        project,
-                        "-f",
-                        str(compose_file_path),
-                        "down",
-                        "-v",
-                    ],
-                    check=False,
-                    capture_output=True,
-                    text=True,
-                )
-                os.remove(compose_file_path)
-            else:
-                ids = subprocess.run(
-                    [
-                        "docker",
-                        "ps",
-                        "-aq",
-                        "--filter",
-                        f"label=com.docker.compose.project={project}",
-                    ],
-                    check=False,
-                    capture_output=True,
-                    text=True,
-                ).stdout.split()
-                if ids:
-                    subprocess.run(
-                        ["docker", "rm", "-f", *ids],
-                        check=False,
-                        capture_output=True,
-                        text=True,
-                    )
-        except Exception as e:
-            logger.error(f"清除孤兒 {project} 失敗: {e}")
+        _teardown_compose_project(project, instance_id_str)
 
     return f"reconcile 完成，stuck={len(stuck)} orphans={len(orphans)}"
