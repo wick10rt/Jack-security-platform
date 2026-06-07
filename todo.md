@@ -7,8 +7,8 @@
 
 ## 🔴 上線前必做（只有你能做）
 
-- [ ] **輪換祕密** — 在 `.env` 換上全新的 `SECRET_KEY` 與 `ADMIN_ACCESS_KEY`；前端 `.env` 的
-      `VITE_ADMIN_ACCESS_KEY` 同步。舊值已洩漏在 git 歷史，**絕不可沿用**。
+- [ ] **輪換祕密** — 在 `.env` 換上全新的 `SECRET_KEY` 與 `ADMIN_ACCESS_KEY`。
+      舊值已洩漏在 git 歷史，**絕不可沿用**。
   - `python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"`
 
 ## 🟠 部署時的手動動作（非程式碼，需主機環境）

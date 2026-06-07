@@ -131,7 +131,6 @@ celery -A myproject beat -l info
 
 ```dotenv
 VITE_API_BASE_URL=http://<HOST_IP>/api
-VITE_ADMIN_ACCESS_KEY='與後端 ADMIN_ACCESS_KEY 完全相同'
 # VITE_SENTRY_DSN=...            # 要開前端監控才填
 ```
 

@@ -5,7 +5,6 @@ import { storeToRefs } from 'pinia'
 import { isAxiosError } from 'axios'
 import { useToast } from 'vue-toastification'
 
-const ADMIN_ACCESS_KEY = import.meta.env.VITE_ADMIN_ACCESS_KEY ?? ''
 const ADMIN_URL = import.meta.env.VITE_ADMIN_URL ?? 'http://127.0.0.1:8000/admin/'
 
 export function useAuthForm() {
@@ -97,11 +96,7 @@ export function useAuthForm() {
 
     if (redirectUrl) {
       if (redirectUrl === '/admin/') {
-        const adminUrl = new URL(ADMIN_URL)
-        if (ADMIN_ACCESS_KEY) {
-          adminUrl.searchParams.set('admin_key', ADMIN_ACCESS_KEY)
-        }
-        window.location.href = adminUrl.toString()
+        window.location.href = ADMIN_URL
       } else if (redirectUrl.startsWith('http://') || redirectUrl.startsWith('https://')) {
         window.location.href = redirectUrl
       } else {

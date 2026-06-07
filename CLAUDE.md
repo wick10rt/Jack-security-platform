@@ -58,9 +58,10 @@ Two `.env` files are required (neither is committed):
 - Repo root `.env`: `SECRET_KEY`, `DATABASE_PASSWORD`, `DEBUG`, `ALLOWED_HOSTS`,
   `ADMIN_ACCESS_KEY`. Settings reads this from `BASE_DIR.parent`, i.e. the repo
   root, **not** `backend/`.
-- `frontend/.env`: `VITE_API_BASE_URL` (e.g. `http://127.0.0.1:8000/api`) and
-  `VITE_ADMIN_ACCESS_KEY` — this must match `ADMIN_ACCESS_KEY` in the repo-root
-  `.env` (read in `settings.py` and consumed by `core/middleware.py`).
+- `frontend/.env`: `VITE_API_BASE_URL` (e.g. `http://127.0.0.1:8000/api`). The
+  admin bypass key is **not** shipped to the frontend; staff reach `/admin/` via
+  the session set on login. `ADMIN_ACCESS_KEY` (repo-root `.env`, consumed by
+  `core/middleware.py`) is a server-side break-glass only.
 
 ## Architecture & Key Flows
 

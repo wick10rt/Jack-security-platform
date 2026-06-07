@@ -52,8 +52,6 @@ INSTANCE_PUBLIC_HOST=127.0.0.1
 ```dotenv
 # frontend/.env
 
-# 要跟後端 .env 的 ADMIN_ACCESS_KEY 一致
-VITE_ADMIN_ACCESS_KEY='your-admin-access-key'
 VITE_API_BASE_URL=http://127.0.0.1:8000/api
 ```
 

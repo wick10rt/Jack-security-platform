@@ -71,6 +71,9 @@ class LabCompletionSerializer(serializers.ModelSerializer):
 
 
 class ReflectionSerializer(serializers.ModelSerializer):
+    payload = serializers.CharField(max_length=2000)
+    reflection = serializers.CharField(max_length=5000)
+
     class Meta:
         model = CommunitySolution
         fields = ["id", "user", "lab", "payload", "reflection"]
