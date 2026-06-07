@@ -16,6 +16,9 @@ class Lab(models.Model):
     category = models.CharField(max_length=100)
     solution = models.TextField()
     docker_image = models.CharField(max_length=255)
+    compose_template = models.TextField(blank=True, default="")
+    web_service = models.CharField(max_length=100, default="web")
+    web_port = models.PositiveIntegerField(default=80)
 
     def __str__(self):
         return self.title
@@ -56,13 +59,23 @@ class LabCompletion(models.Model):
 
 
 class ActiveInstance(models.Model):
+    status_choices = [
+        ("creating", "Creating"),
+        ("running", "Running"),
+        ("error", "Error"),
+    ]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="active_instances"
     )
     lab = models.ForeignKey(Lab, on_delete=models.CASCADE)
-    instance_url = models.CharField(max_length=255)
-    container_id = models.CharField(max_length=255)
+    status = models.CharField(
+        max_length=20, choices=status_choices, default="creating"
+    )
+    instance_url = models.CharField(max_length=255, blank=True, default="")
+    container_id = models.CharField(max_length=255, blank=True, default="")
+    extensions_used = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
 

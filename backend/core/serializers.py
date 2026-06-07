@@ -85,8 +85,16 @@ class ActiveInstanceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ActiveInstance
-        fields = ["id", "user", "lab", "instance_url", "expires_at"]
-        read_only_fields = ["id", "user", "lab", "instance_url", "expires_at"]
+        fields = [
+            "id",
+            "user",
+            "lab",
+            "status",
+            "instance_url",
+            "extensions_used",
+            "expires_at",
+        ]
+        read_only_fields = fields
 
 
 

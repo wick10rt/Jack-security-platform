@@ -2,6 +2,8 @@ import os
 import subprocess
 import logging
 import uuid
+import yaml
+from datetime import timedelta
 from pathlib import Path
 from django.utils import timezone
 from django.conf import settings
@@ -10,6 +12,71 @@ from .models import ActiveInstance, Lab, User
 
 
 logger = logging.getLogger(__name__)
+
+
+DEFAULT_COMPOSE_TEMPLATE = """
+services:
+  web:
+    image: {image}
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DB_HOST=db
+      - DB_USER=root
+      - DB_PASSWORD=root
+      - DB_NAME=security
+  db:
+    image: {db_image}
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: security
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 20s
+"""
+
+
+def build_compose_content(lab):
+    if lab.compose_template.strip():
+        raw = lab.compose_template
+    else:
+        raw = DEFAULT_COMPOSE_TEMPLATE.format(
+            image=lab.docker_image, db_image=settings.INSTANCE_DB_IMAGE
+        )
+
+    data = yaml.safe_load(raw)
+    if not isinstance(data, dict) or not isinstance(data.get("services"), dict):
+        raise ValueError("compose 內容缺少 services 區塊")
+
+    services = data["services"]
+    for name, svc in services.items():
+        if not isinstance(svc, dict):
+            raise ValueError(f"服務 {name} 格式錯誤")
+        is_web = name == lab.web_service
+        svc["cpus"] = (
+            settings.INSTANCE_WEB_CPUS if is_web else settings.INSTANCE_DB_CPUS
+        )
+        svc["mem_limit"] = (
+            settings.INSTANCE_WEB_MEM if is_web else settings.INSTANCE_DB_MEM
+        )
+        svc["pids_limit"] = settings.INSTANCE_PIDS_LIMIT
+        svc["security_opt"] = ["no-new-privileges:true"]
+        svc["restart"] = "no"
+        svc.pop("privileged", None)
+        svc.pop("cap_add", None)
+        svc.pop("ports", None)
+
+    web = services.get(lab.web_service)
+    if web is None:
+        raise ValueError(f"compose 中找不到對外服務 {lab.web_service}")
+    web["ports"] = [f"{settings.INSTANCE_BIND_HOST}::{lab.web_port}"]
+
+    return yaml.safe_dump(data, default_flow_style=False, sort_keys=False)
 
 
 
@@ -30,35 +97,14 @@ def launch_instance_task(instance_id_str, lab_id_str, user_id_str):
     compose_dir = (settings.BASE_DIR.parent / "instances").resolve()
     compose_file_path = compose_dir / f"docker-compose-{instance_id}.yml"
     project_name = f"instance_{instance_id}"
-    compose_content = f"""
-services:
-  web:
-    image: {lab.docker_image}
-    cpus: 0.5
-    mem_limit: 512m
-    ports:
-      - 127.0.0.1::80
-    depends_on:
-      - db
-    environment:
-      - DB_HOST=db
-      - DB_USER=root
-      - DB_PASSWORD=root
-      - DB_NAME=security
-    security_opt:
-      - no-new-privileges:true
-    restart: "no"
-  db:
-    image: mysql:5.7
-    cpus: 1
-    mem_limit: 512m
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: security
-    security_opt:
-      - no-new-privileges:true
-    restart: "no"
-"""
+
+    try:
+        compose_content = build_compose_content(lab)
+    except Exception as e:
+        logger.error(f"{instance_id} 產生 compose 失敗: {e}")
+        ActiveInstance.objects.filter(id=instance_id).delete()
+        return
+
     with open(compose_file_path, "w") as f:
         f.write(compose_content)
 
@@ -86,15 +132,15 @@ services:
                 "-f",
                 str(compose_file_path),
                 "port",
-                "web",
-                "80",
+                lab.web_service,
+                str(lab.web_port),
             ],
             check=True,
             capture_output=True,
             text=True,
         )
         host_port = port_result.stdout.strip().split(":")[-1]
-        instance_url = f"http://127.0.0.1:{host_port}"
+        instance_url = f"http://{settings.INSTANCE_PUBLIC_HOST}:{host_port}"
 
         ps_result = subprocess.run(
             [
@@ -105,7 +151,7 @@ services:
                 str(compose_file_path),
                 "ps",
                 "-q",
-                "web",
+                lab.web_service,
             ],
             check=True,
             capture_output=True,
@@ -116,6 +162,7 @@ services:
         instance = ActiveInstance.objects.get(id=instance_id)
         instance.instance_url = instance_url
         instance.container_id = container_id
+        instance.status = "running"
         instance.save()
         logger.info(f"成功啟動 {instance_id} 靶機地址: {instance_url}")
 
@@ -134,7 +181,7 @@ services:
                 ]
             )
             os.remove(compose_file_path)
-        ActiveInstance.objects.filter(id=instance_id).delete()
+        ActiveInstance.objects.filter(id=instance_id).update(status="error")
 
 
 @shared_task
@@ -199,3 +246,91 @@ def cleanup_expired_instances():
         terminate_instance_task.delay(instance_id_str, instance.container_id)
 
     return f"開始 {len(expired_instances)} 個清理任務"
+
+
+@shared_task
+def reconcile_instances():
+    compose_dir = (settings.BASE_DIR.parent / "instances").resolve()
+    grace = timezone.now() - timedelta(
+        minutes=settings.INSTANCE_ORPHAN_GRACE_MINUTES
+    )
+
+    stuck = list(
+        ActiveInstance.objects.filter(status="creating", created_at__lt=grace)
+    )
+    for inst in stuck:
+        logger.warning(f"靶機 {inst.id} 卡在 creating 逾時，標記 error")
+        inst.status = "error"
+        inst.save(update_fields=["status"])
+
+    try:
+        result = subprocess.run(
+            [
+                "docker",
+                "ps",
+                "-a",
+                "--filter",
+                "label=com.docker.compose.project",
+                "--format",
+                '{{.Label "com.docker.compose.project"}}',
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except Exception as e:
+        logger.error(f"reconcile 列出容器失敗: {e}")
+        return f"reconcile 中止，stuck={len(stuck)}"
+
+    projects = {p for p in result.stdout.split("\n") if p.startswith("instance_")}
+    known = {
+        f"instance_{i}"
+        for i in ActiveInstance.objects.values_list("id", flat=True)
+    }
+    orphans = projects - known
+
+    for project in orphans:
+        instance_id_str = project[len("instance_"):]
+        logger.warning(f"發現孤兒靶機 {project}，清除中")
+        compose_file_path = compose_dir / f"docker-compose-{instance_id_str}.yml"
+        try:
+            if compose_file_path.exists():
+                subprocess.run(
+                    [
+                        "docker-compose",
+                        "-p",
+                        project,
+                        "-f",
+                        str(compose_file_path),
+                        "down",
+                        "-v",
+                    ],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
+                os.remove(compose_file_path)
+            else:
+                ids = subprocess.run(
+                    [
+                        "docker",
+                        "ps",
+                        "-aq",
+                        "--filter",
+                        f"label=com.docker.compose.project={project}",
+                    ],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                ).stdout.split()
+                if ids:
+                    subprocess.run(
+                        ["docker", "rm", "-f", *ids],
+                        check=False,
+                        capture_output=True,
+                        text=True,
+                    )
+        except Exception as e:
+            logger.error(f"清除孤兒 {project} 失敗: {e}")
+
+    return f"reconcile 完成，stuck={len(stuck)} orphans={len(orphans)}"
