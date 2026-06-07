@@ -1,5 +1,6 @@
 import { ref, onMounted } from 'vue'
 import axios from '@/axios'
+import { isAxiosError } from 'axios'
 import type { Ref } from 'vue'
 
 interface LabProgress {
@@ -11,6 +12,13 @@ interface LabProgress {
   lab_title?: string
 }
 
+interface Paginated<T> {
+  count: number
+  next: string | null
+  previous: string | null
+  results: T[]
+}
+
 export function useSubmit(labId: Ref<string>) {
   const answer = ref('')
   const isSubmitting = ref(false)
@@ -20,53 +28,25 @@ export function useSubmit(labId: Ref<string>) {
   )
   const isLoadingStatus = ref(true)
 
-  const extractLabId = (progress: LabProgress): string => {
-    if (progress.lab) {
-      return String(progress.lab)
-    }
-    if (progress.lab_id) {
-      return String(progress.lab_id)
-    }
-    return ''
-  }
-
   const fetchSubmissionStatus = async () => {
     isLoadingStatus.value = true
     try {
-      const response = await axios.get<LabProgress[]>('/progress/')
-
-      console.log('Progress API Response:', response.data)
-      console.log('Current Lab ID:', labId.value)
-
-      const currentLabProgress = response.data.find((progress) => {
-        const progressLabId = extractLabId(progress)
-        const currentLabId = String(labId.value)
-
-        console.log(`Comparing: "${progressLabId}" === "${currentLabId}"`)
-
-        return progressLabId === currentLabId
+      const response = await axios.get<Paginated<LabProgress>>('/progress/', {
+        params: { lab: labId.value },
       })
-
-      console.log('Found Progress:', currentLabProgress)
-
-      if (currentLabProgress) {
-        if (currentLabProgress.status === 'completed') {
-          submissionStatus.value = 'already_completed'
-          console.log('Status set to: already_completed')
-        } else if (currentLabProgress.status === 'pending_reflection') {
-          submissionStatus.value = 'pending_reflection'
-          console.log('Status set to: pending_reflection')
-        }
+      const current = response.data.results[0]
+      if (current?.status === 'completed') {
+        submissionStatus.value = 'already_completed'
+      } else if (current?.status === 'pending_reflection') {
+        submissionStatus.value = 'pending_reflection'
       } else {
         submissionStatus.value = 'not_started'
-        console.log('Status set to: not_started (no matching lab found)')
       }
     } catch (err) {
       console.error('獲取狀態失敗:', err)
       submissionStatus.value = 'not_started'
     } finally {
       isLoadingStatus.value = false
-      console.log('Loading complete. Final status:', submissionStatus.value)
     }
   }
 
@@ -83,8 +63,8 @@ export function useSubmit(labId: Ref<string>) {
 
       submissionStatus.value = 'pending_reflection'
       answer.value = ''
-    } catch (err: any) {
-      if (err.response) {
+    } catch (err) {
+      if (isAxiosError(err) && err.response) {
         submissionError.value =
           err.response.data.detail || err.response.data.error || '提交失敗，請重試'
       } else {
@@ -96,7 +76,6 @@ export function useSubmit(labId: Ref<string>) {
   }
 
   onMounted(() => {
-    console.log('useSubmit mounted, fetching status...')
     fetchSubmissionStatus()
   })
 
@@ -110,4 +89,3 @@ export function useSubmit(labId: Ref<string>) {
     fetchSubmissionStatus,
   }
 }
-

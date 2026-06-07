@@ -1,7 +1,19 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import axios from '@/axios'
+import { isAxiosError } from 'axios'
 import { useToast } from 'vue-toastification'
+
+function errMsg(err: unknown, fallback: string): string {
+  if (isAxiosError(err)) {
+    return err.response?.data?.error || err.response?.data?.message || fallback
+  }
+  return fallback
+}
+
+function statusCode(err: unknown): number | undefined {
+  return isAxiosError(err) ? err.response?.status : undefined
+}
 
 interface ActiveInstance {
   id: string
@@ -78,8 +90,8 @@ export const useInstanceStore = defineStore('instance', () => {
       } else {
         throw new Error('伺服器錯誤')
       }
-    } catch (err: any) {
-      const errorMsg = err.response?.data?.error || '啟動失敗'
+    } catch (err) {
+      const errorMsg = errMsg(err, '啟動失敗')
       error.value = errorMsg
       isLoading.value = false
       activeInstance.value = null
@@ -122,10 +134,11 @@ export const useInstanceStore = defineStore('instance', () => {
           isLoading.value = false
           toast.success('靶機已成功啟動！')
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error('Polling error:', err)
 
-        if (err.response?.status === 404 || err.response?.status === 403) {
+        const code = statusCode(err)
+        if (code === 404 || code === 403) {
           stopPolling()
           activeInstance.value = null
           saveToLocalStorage()
@@ -151,8 +164,8 @@ export const useInstanceStore = defineStore('instance', () => {
 
         toast.success('關閉靶機成功')
       }
-    } catch (err: any) {
-      const errorMsg = err.response?.data?.error || err.response?.data?.message || '關閉靶機失敗'
+    } catch (err) {
+      const errorMsg = errMsg(err, '關閉靶機失敗')
       toast.error(errorMsg)
       throw err
     } finally {
@@ -194,10 +207,11 @@ export const useInstanceStore = defineStore('instance', () => {
         pollInstanceStatus(id, labId)
         toast.info('靶機正在創建中...')
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to initialize from storage:', error)
 
-      if (error.response?.status === 404 || error.response?.status === 403) {
+      const code = statusCode(error)
+      if (code === 404 || code === 403) {
         activeInstance.value = null
         saveToLocalStorage()
         toast.warning('之前的靶機已過期')
@@ -217,8 +231,8 @@ export const useInstanceStore = defineStore('instance', () => {
         saveToLocalStorage()
       }
       toast.success('已延長靶機時間')
-    } catch (err: any) {
-      const errorMsg = err.response?.data?.error || '延長失敗'
+    } catch (err) {
+      const errorMsg = errMsg(err, '延長失敗')
       toast.error(errorMsg)
       throw err
     }

@@ -32,27 +32,21 @@ axiosInstance.interceptors.response.use(
         originalRequest.url?.includes('/auth/token/refresh/') ||
         originalRequest.url?.includes('/auth/register/')
       ) {
-        console.log('跳過 token 刷新')
         return Promise.reject(error)
       }
 
       const refreshToken = localStorage.getItem('refreshToken')
       if (!refreshToken) {
-        console.log('沒有可用的 refresh token，無法刷新')
         return Promise.reject(error)
       }
 
       originalRequest._retry = true
 
       try {
-        console.log('刷新 token 中')
-
         const { useAuthStore } = await import('@/stores/auth')
         const authStore = useAuthStore()
 
         const newToken = await authStore.refreshTokenAction()
-
-        console.log('成功刷新 token')
 
         if (originalRequest.headers) {
           originalRequest.headers.Authorization = `Bearer ${newToken}`

@@ -1,5 +1,6 @@
 import { computed } from 'vue'
 import axios from '@/axios'
+import { isAxiosError } from 'axios'
 import type { Ref } from 'vue'
 import { useToast } from 'vue-toastification'
 import Swal from 'sweetalert2'
@@ -45,7 +46,7 @@ export function useControllInstance(labId: Ref<string>) {
   const extendInstance = async () => {
     try {
       await instanceStore.extendInstance()
-    } catch (err: any) {
+    } catch (err) {
       console.error('Extend instance error:', err)
     }
   }
@@ -58,7 +59,7 @@ export function useControllInstance(labId: Ref<string>) {
 
     try {
       await instanceStore.launchInstance(labId.value)
-    } catch (err: any) {
+    } catch (err) {
       console.error('Launch instance error:', err)
     }
   }
@@ -76,7 +77,7 @@ export function useControllInstance(labId: Ref<string>) {
     if (result.isConfirmed) {
       try {
         await instanceStore.terminateInstance()
-      } catch (err: any) {
+      } catch (err) {
         console.error('Terminate instance error:', err)
       }
     }
@@ -99,10 +100,11 @@ export function useControllInstance(labId: Ref<string>) {
       } else {
         toast.error('無法獲取靶機 URL')
       }
-    } catch (error: any) {
-      if (error.response?.status === 403) {
+    } catch (error) {
+      const code = isAxiosError(error) ? error.response?.status : undefined
+      if (code === 403) {
         toast.error('無權訪問此靶機')
-      } else if (error.response?.status === 404) {
+      } else if (code === 404) {
         toast.error('靶機不存在')
       } else {
         toast.error('進入靶機時出現錯誤，請重試')

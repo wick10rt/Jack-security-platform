@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import axios from '@/axios'
+import { isAxiosError } from 'axios'
 import { jwtDecode } from 'jwt-decode'
 
 interface DecodedToken {
@@ -89,8 +90,8 @@ export const useAuthStore = defineStore('auth', () => {
       const { access, refresh, redirect_url } = response.data
       setAuthInfo(access, refresh, true)
       return redirect_url
-    } catch (error: any) {
-      if (error.response) {
+    } catch (error) {
+      if (isAxiosError(error) && error.response) {
         switch (error.response.status) {
           case 401:
             loginError.value = '帳號或密碼錯誤'
@@ -101,7 +102,7 @@ export const useAuthStore = defineStore('auth', () => {
           default:
             loginError.value = '登入失敗，請稍後再試'
         }
-      } else if (error.request) {
+      } else if (isAxiosError(error) && error.request) {
         loginError.value = '無法連接到伺服器'
       } else {
         loginError.value = '發生未知錯誤'
@@ -129,7 +130,6 @@ export const useAuthStore = defineStore('auth', () => {
     isRefreshing = true
 
     try {
-      const tempAuth = axios.defaults.headers.common['Authorization']
       delete axios.defaults.headers.common['Authorization']
 
       const response = await axios.post<{ access: string }>('/auth/token/refresh/', {
@@ -144,7 +144,7 @@ export const useAuthStore = defineStore('auth', () => {
       refreshSubscribers = []
 
       return access
-    } catch (error: any) {
+    } catch {
       clearAuthInfo()
       throw new Error('刷新 token 失敗')
     } finally {
