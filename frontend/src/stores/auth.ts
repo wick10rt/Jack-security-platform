@@ -163,7 +163,14 @@ export const useAuthStore = defineStore('auth', () => {
     })
   }
 
-  function logout() {
+  async function logout() {
+    try {
+      if (refreshToken.value) {
+        await axios.post('/auth/logout/', { refresh: refreshToken.value })
+      }
+    } catch (error) {
+      console.error('登出撤銷 token 失敗（已忽略）:', error)
+    }
     clearAuthInfo()
     loginError.value = null
     isLoggingIn.value = false

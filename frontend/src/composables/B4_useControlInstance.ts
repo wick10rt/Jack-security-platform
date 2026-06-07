@@ -28,7 +28,27 @@ export function useControllInstance(labId: Ref<string>) {
     return null
   })
 
+  const isCreating = computed(
+    () => isCurrentLabActive.value && instanceStore.activeInstance?.status === 'creating',
+  )
+
+  const expiresAt = computed(() =>
+    isCurrentLabActive.value ? instanceStore.activeInstance?.expiresAt || null : null,
+  )
+
+  const extensionsUsed = computed(
+    () => instanceStore.activeInstance?.extensionsUsed ?? 0,
+  )
+
   const isLaunching = computed(() => isCurrentLabActive.value && instanceStore.isLoading)
+
+  const extendInstance = async () => {
+    try {
+      await instanceStore.extendInstance()
+    } catch (err: any) {
+      console.error('Extend instance error:', err)
+    }
+  }
 
   const launchInstance = async () => {
     if (hasAnyInstance.value && !isCurrentLabActive.value) {
@@ -94,6 +114,9 @@ export function useControllInstance(labId: Ref<string>) {
   return {
     instanceUrl,
     instanceStatus,
+    isCreating,
+    expiresAt,
+    extensionsUsed,
     hasAnyInstance,
     isCurrentLabActive,
     isLaunching,
@@ -101,6 +124,7 @@ export function useControllInstance(labId: Ref<string>) {
     launchError: computed(() => instanceStore.error),
     launchInstance,
     terminateInstance,
+    extendInstance,
     accessInstance,
   }
 }

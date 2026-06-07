@@ -26,7 +26,7 @@
 
       <section class="description-section card">
         <h2 class="section-title">實驗說明</h2>
-        <div class="description-content" v-html="lab.description"></div>
+        <div class="description-content" v-html="safeDescription"></div>
       </section>
 
       <section class="actions-section card">
@@ -65,7 +65,7 @@
         </div>
 
         <div v-else-if="instanceStatus === 'current-lab'">
-          <div v-if="instanceUrl === 'creating...'" class="creating-block">
+          <div v-if="isCreating" class="creating-block">
             <div class="spinner-small"></div>
             <p>靶機創建中，請稍候...</p>
           </div>
@@ -79,6 +79,17 @@
               <button @click="accessInstance" class="btn btn-primary access-btn">
                 <span class="btn-icon">→</span>
                 進入靶機
+              </button>
+              <button
+                @click="extendInstance"
+                :disabled="extensionsUsed >= maxExtensions"
+                class="btn btn-secondary"
+              >
+                {{
+                  extensionsUsed >= maxExtensions
+                    ? '已達延長上限'
+                    : `延長時間 (${extensionsUsed}/${maxExtensions})`
+                }}
               </button>
               <button
                 @click="terminateInstance"
@@ -245,8 +256,9 @@
 </template>
 
 <script setup lang="ts">
-import { toRef, type Ref } from 'vue'
+import { computed, toRef, type Ref } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
+import DOMPurify from 'dompurify'
 import { LabDetail } from '@/composables/B2_useGetDetail'
 import { useSubmit } from '@/composables/B5_useSubmit'
 import { useReflection } from '@/composables/B3_useReflection'
@@ -256,6 +268,11 @@ import { useControllInstance } from '@/composables/B4_useControlInstance'
 const route = useRoute()
 const labId = toRef(route.params, 'id') as Ref<string>
 const { lab, isLoading, error } = LabDetail(labId)
+
+const maxExtensions = 2
+const safeDescription = computed(() =>
+  lab.value?.description ? DOMPurify.sanitize(lab.value.description) : '',
+)
 
 const {
   answer,
@@ -286,6 +303,8 @@ const {
 const {
   instanceUrl,
   instanceStatus,
+  isCreating,
+  extensionsUsed,
   hasAnyInstance,
   isCurrentLabActive,
   isLaunching,
@@ -293,6 +312,7 @@ const {
   launchError,
   launchInstance,
   terminateInstance,
+  extendInstance,
   accessInstance,
 } = useControllInstance(labId)
 </script>

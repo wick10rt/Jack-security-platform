@@ -6,9 +6,11 @@ import { useToast } from 'vue-toastification'
 interface ActiveInstance {
   id: string
   labId: string
+  status: string
   instanceUrl: string
   containerUrl: string
   expiresAt: string
+  extensionsUsed: number
 }
 
 export const useInstanceStore = defineStore('instance', () => {
@@ -62,9 +64,11 @@ export const useInstanceStore = defineStore('instance', () => {
         activeInstance.value = {
           id: data.id,
           labId: labId,
-          instanceUrl: data.instance_url || 'creating...',
-          containerUrl: data.container_id || 'creating...',
+          status: data.status || 'creating',
+          instanceUrl: data.instance_url || '',
+          containerUrl: data.container_id || '',
           expiresAt: data.expires_at,
+          extensionsUsed: data.extensions_used || 0,
         }
         saveToLocalStorage()
 
@@ -91,23 +95,27 @@ export const useInstanceStore = defineStore('instance', () => {
         const response = await axios.get(`/instances/${instanceId}/status/`)
         const data = response.data
 
-        console.log('Polling status:', data)
+        if (data.status === 'error') {
+          stopPolling()
+          activeInstance.value = null
+          saveToLocalStorage()
+          isLoading.value = false
+          error.value = '靶機啟動失敗，請重試'
+          toast.error('靶機啟動失敗，請重試')
+          return
+        }
 
-        const isReady =
-          data.instance_url &&
-          data.instance_url !== 'creating...' &&
-          data.instance_url !== 'waiting...' &&
-          !data.instance_url.includes('creating')
-
-        if (isReady) {
+        if (data.status === 'running') {
           stopPolling()
 
           activeInstance.value = {
             id: data.id,
             labId: labId,
+            status: data.status,
             instanceUrl: data.instance_url,
             containerUrl: data.container_id,
             expiresAt: data.expires_at,
+            extensionsUsed: data.extensions_used || 0,
           }
           saveToLocalStorage()
 
@@ -155,18 +163,9 @@ export const useInstanceStore = defineStore('instance', () => {
   const initializeFromStorage = async () => {
     if (!activeInstance.value) return
 
-    const { id, labId, instanceUrl } = activeInstance.value
+    const { id, labId } = activeInstance.value
 
-    console.log('Initializing from storage:', activeInstance.value)
-
-    const isReady =
-      instanceUrl &&
-      instanceUrl !== 'creating...' &&
-      instanceUrl !== 'waiting...' &&
-      !instanceUrl.includes('creating')
-
-    if (isReady) {
-      console.log('Instance already running, no need to poll')
+    if (activeInstance.value.status === 'running') {
       return
     }
 
@@ -174,24 +173,22 @@ export const useInstanceStore = defineStore('instance', () => {
       const response = await axios.get(`/instances/${id}/status/`)
       const data = response.data
 
-      console.log('Initial status check:', data)
-
-      const isNowReady =
-        data.instance_url &&
-        data.instance_url !== 'creating...' &&
-        data.instance_url !== 'waiting...' &&
-        !data.instance_url.includes('creating')
-
-      if (isNowReady) {
+      if (data.status === 'running') {
         activeInstance.value = {
           id: data.id,
           labId: labId,
+          status: data.status,
           instanceUrl: data.instance_url,
           containerUrl: data.container_id,
           expiresAt: data.expires_at,
+          extensionsUsed: data.extensions_used || 0,
         }
         saveToLocalStorage()
         toast.success('靶機已就緒！')
+      } else if (data.status === 'error') {
+        activeInstance.value = null
+        saveToLocalStorage()
+        toast.error('靶機啟動失敗，請重試')
       } else {
         isLoading.value = true
         pollInstanceStatus(id, labId)
@@ -208,12 +205,32 @@ export const useInstanceStore = defineStore('instance', () => {
     }
   }
 
+  const extendInstance = async () => {
+    if (!activeInstance.value) return
+
+    try {
+      const response = await axios.post('/instances/extend/')
+      const data = response.data
+      if (activeInstance.value) {
+        activeInstance.value.expiresAt = data.expires_at
+        activeInstance.value.extensionsUsed = data.extensions_used
+        saveToLocalStorage()
+      }
+      toast.success('已延長靶機時間')
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.error || '延長失敗'
+      toast.error(errorMsg)
+      throw err
+    }
+  }
+
   return {
     activeInstance,
     isLoading,
     error,
     launchInstance,
     terminateInstance,
+    extendInstance,
     stopPolling,
     initializeFromStorage,
   }
