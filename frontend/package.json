@@ -16,6 +16,7 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
+    "@sentry/vue": "^10.56.0",
     "axios": "^1.13.2",
     "dompurify": "^3.4.8",
     "jwt-decode": "^4.0.0",

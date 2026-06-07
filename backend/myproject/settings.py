@@ -241,6 +241,21 @@ CELERY_BEAT_SCHEDULE = {
 }
 
 
+SENTRY_DSN = env("SENTRY_DSN", default="")
+if SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+    from sentry_sdk.integrations.celery import CeleryIntegration
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[DjangoIntegration(), CeleryIntegration()],
+        traces_sample_rate=env.float("SENTRY_TRACES_SAMPLE_RATE", default=0.0),
+        send_default_pii=False,
+        environment=env("SENTRY_ENVIRONMENT", default="production"),
+    )
+
+
 ACTIVEINSTANCE_LIMIT = env.int("ACTIVEINSTANCE_LIMIT", default=30)
 INSTANCE_EXPIRY_MINUTES = env.int("INSTANCE_EXPIRY_MINUTES", default=30)
 INSTANCE_WEB_CPUS = env.float("INSTANCE_WEB_CPUS", default=0.5)
