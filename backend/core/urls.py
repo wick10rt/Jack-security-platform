@@ -4,6 +4,7 @@ from .views import (
     LabListView,
     LabDetailView,
     UserProgressView,
+    ProgressStatsView,
     LaunchInstanceView,
     SubmitAnswerView,
     CommunitySolutionListView,
@@ -27,6 +28,11 @@ urlpatterns = [
         "progress/",
         UserProgressView.as_view(),
         name="user-progress",
+    ),
+    path(
+        "progress/stats/",
+        ProgressStatsView.as_view(),
+        name="progress-stats",
     ),
     path(
         "labs/",

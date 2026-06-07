@@ -86,6 +86,8 @@ REST_FRAMEWORK = {
         "register": env("THROTTLE_REGISTER", default="10/hour"),
         "submit_answer": env("THROTTLE_SUBMIT_ANSWER", default="30/min"),
     },
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": env.int("PAGE_SIZE", default=10),
 }
 
 ROOT_URLCONF = "myproject.urls"

@@ -164,6 +164,19 @@ class UserProgressView(generics.ListAPIView):
         return LabCompletion.objects.filter(user=user)
 
 
+class ProgressStatsView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        qs = LabCompletion.objects.filter(user=request.user)
+        total = qs.count()
+        completed = qs.filter(status="completed").count()
+        return Response(
+            {"total": total, "completed": completed, "pending": total - completed},
+            status=status.HTTP_200_OK,
+        )
+
+
 class ReflectionView(generics.GenericAPIView):
     serializer_class = ReflectionSerializer
     permission_classes = [IsAuthenticated]
@@ -307,7 +320,11 @@ class TerminateInstanceView(generics.GenericAPIView):
 
     def post(self, request, *args, **kwargs):
         user = request.user
-        instance = ActiveInstance.objects.filter(user=user).first()
+        instance = (
+            ActiveInstance.objects.filter(user=user)
+            .order_by("-created_at")
+            .first()
+        )
 
         if not instance:
             return Response(
@@ -364,7 +381,7 @@ class SubmitAnswerView(generics.GenericAPIView):
         serializer.is_valid(raise_exception=True)
         submitted_answer = serializer.validated_data["answer"]
 
-        if submitted_answer == lab.solution:
+        if submitted_answer.strip() == lab.solution.strip():
             completion, created = LabCompletion.objects.get_or_create(
                 user=user, lab=lab, defaults={"status": "pending_reflection"}
             )

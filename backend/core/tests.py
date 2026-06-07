@@ -166,6 +166,14 @@ class SubmitAnswerTests(BaseTest):
             LabCompletion.objects.filter(user=self.user, lab=self.lab).exists()
         )
 
+    def test_answer_with_surrounding_whitespace_accepted(self):
+        res = self.client.post(
+            reverse("answer-submit", args=[self.lab.id]),
+            {"answer": "  flag{correct}  "},
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["status"], "pending_reflection")
+
     def test_submit_answer_is_throttled(self):
         url = reverse("answer-submit", args=[self.lab.id])
         last = None
@@ -228,7 +236,7 @@ class CommunitySolutionGatingTests(BaseTest):
         self.client.force_authenticate(self.viewer)
         res = self.client.get(reverse("community-solutions", args=[self.lab.id]))
         self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(res.data), 0)
+        self.assertEqual(res.data["count"], 0)
 
     def test_completed_sees_solutions(self):
         LabCompletion.objects.create(
@@ -237,7 +245,7 @@ class CommunitySolutionGatingTests(BaseTest):
         self.client.force_authenticate(self.viewer)
         res = self.client.get(reverse("community-solutions", args=[self.lab.id]))
         self.assertEqual(res.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(res.data), 1)
+        self.assertEqual(res.data["count"], 1)
 
 
 class LogoutTests(BaseTest):
@@ -330,6 +338,69 @@ class LaunchInstanceViewTests(BaseTest):
             )
         )
         self.assertEqual(statuses, ["creating"])
+
+
+class ProgressStatsTests(BaseTest):
+    def test_stats_counts(self):
+        user = User.objects.create_user(
+            username="statsuser", password="a-very-long-pass"
+        )
+        for st in ("completed", "completed", "pending_reflection"):
+            LabCompletion.objects.create(user=user, lab=make_lab(), status=st)
+        self.client.force_authenticate(user)
+        res = self.client.get(reverse("progress-stats"))
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["total"], 3)
+        self.assertEqual(res.data["completed"], 2)
+        self.assertEqual(res.data["pending"], 1)
+
+
+class TerminateInstanceTests(BaseTest):
+    @patch("core.views.terminate_instance_task.delay")
+    def test_terminate_deletes_row_and_dispatches(self, mock_delay):
+        user = User.objects.create_user(
+            username="termuser", password="a-very-long-pass"
+        )
+        inst = ActiveInstance.objects.create(
+            user=user,
+            lab=make_lab(),
+            status="running",
+            instance_url="http://127.0.0.1:1",
+            container_id="c",
+            expires_at=timezone.now() + timedelta(minutes=30),
+        )
+        self.client.force_authenticate(user)
+        res = self.client.post(reverse("terminate-instance"))
+        self.assertEqual(res.status_code, status.HTTP_202_ACCEPTED)
+        self.assertFalse(ActiveInstance.objects.filter(id=inst.id).exists())
+        self.assertTrue(mock_delay.called)
+
+
+class ReconcileTests(BaseTest):
+    @patch("core.tasks._teardown_compose_project")
+    @patch("core.tasks.subprocess.run")
+    def test_stuck_creating_torn_down_and_marked_error(self, mock_run, mock_teardown):
+        mock_run.return_value.stdout = ""
+        user = User.objects.create_user(
+            username="recuser", password="a-very-long-pass"
+        )
+        inst = ActiveInstance.objects.create(
+            user=user,
+            lab=make_lab(),
+            status="creating",
+            expires_at=timezone.now() + timedelta(minutes=30),
+        )
+        ActiveInstance.objects.filter(id=inst.id).update(
+            created_at=timezone.now() - timedelta(minutes=60)
+        )
+
+        from core.tasks import reconcile_instances
+
+        reconcile_instances()
+
+        inst.refresh_from_db()
+        self.assertEqual(inst.status, "error")
+        self.assertTrue(mock_teardown.called)
 
 
 class InstanceOwnershipTests(BaseTest):
