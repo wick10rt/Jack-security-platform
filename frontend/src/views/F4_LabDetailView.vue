@@ -248,6 +248,15 @@
             <div v-else-if="!solutionsLoading && !solutionsError" class="empty-solutions">
               <p>這邊空空如也!!!</p>
             </div>
+
+            <PaginationControls
+              :current-page="solutionsPage"
+              :total-pages="solutionsTotalPages"
+              :has-prev="solutionsHasPrev"
+              :has-next="solutionsHasNext"
+              @prev="solutionsPrev"
+              @next="solutionsNext"
+            />
           </div>
         </div>
       </section>
@@ -259,6 +268,7 @@
 import { computed, toRef, type Ref } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import DOMPurify from 'dompurify'
+import PaginationControls from '@/components/PaginationControls.vue'
 import { LabDetail } from '@/composables/B2_useGetDetail'
 import { useSubmit } from '@/composables/B5_useSubmit'
 import { useReflection } from '@/composables/B3_useReflection'
@@ -298,6 +308,12 @@ const {
   isLoading: solutionsLoading,
   error: solutionsError,
   toggleSolutions,
+  currentPage: solutionsPage,
+  totalPages: solutionsTotalPages,
+  hasNext: solutionsHasNext,
+  hasPrev: solutionsHasPrev,
+  nextPage: solutionsNext,
+  prevPage: solutionsPrev,
 } = useSolutions(labId, submissionStatus)
 
 const {

@@ -48,6 +48,15 @@
         <p class="empty-text">目前沒有可用的實驗</p>
         <p class="empty-hint">敬請期待張胖胖增加更多精彩內容</p>
       </div>
+
+      <PaginationControls
+        :current-page="currentPage"
+        :total-pages="totalPages"
+        :has-prev="hasPrev"
+        :has-next="hasNext"
+        @prev="prevPage"
+        @next="nextPage"
+      />
     </div>
   </div>
 </template>
@@ -55,8 +64,10 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
 import { getLabList } from '@/composables/B2_useGetLabs'
+import PaginationControls from '@/components/PaginationControls.vue'
 
-const { labs, isLoading, error } = getLabList()
+const { labs, isLoading, error, currentPage, totalPages, hasNext, hasPrev, nextPage, prevPage } =
+  getLabList()
 </script>
 
 <style scoped>

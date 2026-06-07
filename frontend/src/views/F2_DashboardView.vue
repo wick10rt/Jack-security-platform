@@ -19,19 +19,15 @@
       <div v-else-if="completions.length > 0" class="completions-container">
         <div class="stats-summary fade-in-up">
           <div class="stat-card">
-            <div class="stat-number">{{ completions.length }}</div>
+            <div class="stat-number">{{ stats.total }}</div>
             <div class="stat-label">學習紀錄</div>
           </div>
           <div class="stat-card">
-            <div class="stat-number">
-              {{ completions.filter((c) => c.status === 'completed').length }}
-            </div>
+            <div class="stat-number">{{ stats.completed }}</div>
             <div class="stat-label">已完成</div>
           </div>
           <div class="stat-card">
-            <div class="stat-number">
-              {{ completions.filter((c) => c.status !== 'completed').length }}
-            </div>
+            <div class="stat-number">{{ stats.pending }}</div>
             <div class="stat-label">進行中</div>
           </div>
         </div>
@@ -55,6 +51,15 @@
             </div>
           </li>
         </ul>
+
+        <PaginationControls
+          :current-page="currentPage"
+          :total-pages="totalPages"
+          :has-prev="hasPrev"
+          :has-next="hasNext"
+          @prev="prevPage"
+          @next="nextPage"
+        />
       </div>
 
       <div v-else class="empty-state fade-in-up">
@@ -77,8 +82,20 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
 import { useProgress } from '@/composables/B3_useGetProgress'
+import PaginationControls from '@/components/PaginationControls.vue'
 
-const { completions, isLoading, error } = useProgress()
+const {
+  completions,
+  stats,
+  isLoading,
+  error,
+  currentPage,
+  totalPages,
+  hasNext,
+  hasPrev,
+  nextPage,
+  prevPage,
+} = useProgress()
 </script>
 
 <style scoped>
