@@ -1,15 +1,20 @@
 import { ref, reactive, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { storeToRefs } from 'pinia'
 import { isAxiosError } from 'axios'
 import { useToast } from 'vue-toastification'
 
-const ADMIN_URL = import.meta.env.VITE_ADMIN_URL ?? 'http://127.0.0.1:8000/admin/'
+// admin 與 API 同一個 Django：未指定 VITE_ADMIN_URL 時直接由 API base 推導，
+// 部署時就不會忘了改而導去 127.0.0.1
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api'
+const ADMIN_URL =
+  import.meta.env.VITE_ADMIN_URL ?? new URL('/admin/', new URL(API_BASE, window.location.origin)).href
 
 export function useAuthForm() {
   const authStore = useAuthStore()
   const router = useRouter()
+  const route = useRoute()
   const { isLoggingIn, loginError } = storeToRefs(authStore)
   const isRegisterMode = ref(false)
   const toast = useToast()
@@ -100,7 +105,11 @@ export function useAuthForm() {
       } else if (redirectUrl.startsWith('http://') || redirectUrl.startsWith('https://')) {
         window.location.href = redirectUrl
       } else {
-        await router.push(redirectUrl)
+        // 被路由守衛擋下來的話，登入後跳回原本要去的頁面（僅接受站內路徑）
+        const intended = typeof route.query.redirect === 'string' ? route.query.redirect : ''
+        const safeTarget =
+          intended.startsWith('/') && !intended.startsWith('//') ? intended : redirectUrl
+        await router.push(safeTarget)
       }
     }
   }

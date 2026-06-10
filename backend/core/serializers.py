@@ -1,6 +1,6 @@
 from rest_framework import serializers
+from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
-from django.db import transaction
 from .models import Lab, User, LabCompletion, ActiveInstance, CommunitySolution
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
@@ -39,7 +39,7 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
 class LabSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lab
-        fields = ["id", "title", "category"]
+        fields = ["id", "title", "category", "requires_answer"]
 
 
 class LabDetailSerializer(serializers.ModelSerializer):
@@ -86,6 +86,7 @@ class ActiveInstanceSerializer(serializers.ModelSerializer):
     user = serializers.StringRelatedField(read_only=True)
     lab = serializers.StringRelatedField(read_only=True)
     lab_id = serializers.PrimaryKeyRelatedField(source="lab", read_only=True)
+    max_extensions = serializers.SerializerMethodField()
 
     class Meta:
         model = ActiveInstance
@@ -97,9 +98,14 @@ class ActiveInstanceSerializer(serializers.ModelSerializer):
             "status",
             "instance_url",
             "extensions_used",
+            "max_extensions",
             "expires_at",
         ]
         read_only_fields = fields
+
+    def get_max_extensions(self, obj):
+        # 讓前端跟著後端設定走，不必把上限寫死在 UI；每題可覆寫全域預設
+        return obj.lab.max_extensions or settings.INSTANCE_MAX_EXTENSIONS
 
 
 

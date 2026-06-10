@@ -4,7 +4,6 @@ import logging
 import uuid
 import yaml
 from datetime import timedelta
-from pathlib import Path
 from django.utils import timezone
 from django.conf import settings
 from celery import shared_task
@@ -12,6 +11,30 @@ from .models import ActiveInstance, Lab, User
 
 
 logger = logging.getLogger(__name__)
+
+
+def _compose(*args, project, compose_file):
+    """組 compose 指令（v2/v1 由 settings.DOCKER_COMPOSE_CMD 決定），統一帶 -p/-f。"""
+    return [
+        *settings.DOCKER_COMPOSE_CMD,
+        "-p",
+        project,
+        "-f",
+        str(compose_file),
+        *args,
+    ]
+
+
+def _extract_host_port(stdout):
+    """從 `compose port` 輸出取對外埠：取第一個非空行、抓最後一段冒號後的值。
+
+    v2 dual-stack 會回多行（IPv4 + IPv6），舊寫法 split(':')[-1] 會被換行干擾；
+    空輸出時丟例外讓上層重試，而不是組出 http://host: 這種壞 URL。
+    """
+    lines = [line.strip() for line in stdout.splitlines() if line.strip()]
+    if not lines:
+        raise ValueError("docker compose port 沒有回傳對外埠")
+    return lines[0].rsplit(":", 1)[-1]
 
 
 def default_compose_dict(lab):
@@ -59,6 +82,58 @@ def default_compose_dict(lab):
     return {"services": services}
 
 
+# 出題者貼的 compose 一律剝掉會碰到主機／跨實例的鍵：
+# 掛載類（volumes/devices…）、命名空間類（network_mode/pid…）、
+# 編排類（build/deploy/container_name 會撞名或繞過資源限制）
+STRIPPED_SERVICE_KEYS = (
+    "privileged",
+    "cap_add",
+    "ports",
+    "volumes",
+    "volumes_from",
+    "devices",
+    "device_cgroup_rules",
+    "network_mode",
+    "networks",
+    "pid",
+    "ipc",
+    "uts",
+    "userns_mode",
+    "build",
+    "container_name",
+    "env_file",
+    "secrets",
+    "configs",
+    "sysctls",
+    "cgroup_parent",
+    "cgroup",
+    "deploy",
+    "extra_hosts",
+    "external_links",
+    "labels",
+    "logging",
+    "runtime",
+    "profiles",
+    "oom_kill_disable",
+    "oom_score_adj",
+    "dns",
+    "dns_search",
+    "dns_opt",
+)
+
+
+def _parse_env_lines(text):
+    """把多行 KEY=VALUE 解析成 dict（忽略空行與 # 註解）。"""
+    env = {}
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        env[key.strip()] = value.strip()
+    return env
+
+
 def build_compose_content(lab):
     if lab.compose_template.strip():
         data = yaml.safe_load(lab.compose_template)
@@ -72,6 +147,8 @@ def build_compose_content(lab):
     for name, svc in services.items():
         if not isinstance(svc, dict):
             raise ValueError(f"服務 {name} 格式錯誤")
+        for key in STRIPPED_SERVICE_KEYS:
+            svc.pop(key, None)
         is_web = name == lab.web_service
         svc["cpus"] = (
             settings.INSTANCE_WEB_CPUS if is_web else settings.INSTANCE_DB_CPUS
@@ -82,16 +159,35 @@ def build_compose_content(lab):
         svc["pids_limit"] = settings.INSTANCE_PIDS_LIMIT
         svc["security_opt"] = ["no-new-privileges:true"]
         svc["restart"] = "no"
-        svc.pop("privileged", None)
-        svc.pop("cap_add", None)
-        svc.pop("ports", None)
+        # 丟掉危險 capabilities（擋跳板/逃逸）；作者自帶的 cap_add 早已在上面剝除
+        svc["cap_drop"] = list(settings.INSTANCE_CAP_DROP)
+        if settings.INSTANCE_CAP_ADD:
+            svc["cap_add"] = list(settings.INSTANCE_CAP_ADD)
 
     web = services.get(lab.web_service)
     if web is None:
         raise ValueError(f"compose 中找不到對外服務 {lab.web_service}")
     web["ports"] = [f"{settings.INSTANCE_BIND_HOST}::{lab.web_port}"]
 
-    return yaml.safe_dump(data, default_flow_style=False, sort_keys=False)
+    # 每題自訂 env 合進 web 服務（覆蓋預設模板的 DB_* 名稱/值）
+    if lab.web_env.strip():
+        merged = {}
+        existing = web.get("environment")
+        if isinstance(existing, list):
+            for item in existing:
+                if isinstance(item, str) and "=" in item:
+                    key, value = item.split("=", 1)
+                    merged[key] = value
+        elif isinstance(existing, dict):
+            for key, value in existing.items():
+                merged[key] = str(value)
+        merged.update(_parse_env_lines(lab.web_env))
+        web["environment"] = [f"{k}={v}" for k, v in merged.items()]
+
+    # 頂層只保留 services：丟掉 version 與作者自帶的 volumes/networks/secrets 等
+    return yaml.safe_dump(
+        {"services": services}, default_flow_style=False, sort_keys=False
+    )
 
 
 
@@ -100,6 +196,11 @@ def build_compose_content(lab):
 def launch_instance_task(self, instance_id_str, lab_id_str, user_id_str):
     instance_id = uuid.UUID(instance_id_str)
     logger.info(f"開始創建靶機 {instance_id}")
+
+    # 任務（或重試）開跑前先確認列還在：使用者可能在創建中途就按了關閉
+    if not ActiveInstance.objects.filter(id=instance_id).exists():
+        logger.info(f"{instance_id} 已被刪除，跳過創建")
+        return
 
     try:
         lab = Lab.objects.get(id=lab_id_str)
@@ -126,49 +227,35 @@ def launch_instance_task(self, instance_id_str, lab_id_str, user_id_str):
 
     try:
         subprocess.run(
-            [
-                "docker-compose",
-                "-p",
-                project_name,
-                "-f",
-                str(compose_file_path),
-                "up",
-                "-d",
-            ],
+            _compose("up", "-d", project=project_name, compose_file=compose_file_path),
             check=True,
             capture_output=True,
             text=True,
         )
 
         port_result = subprocess.run(
-            [
-                "docker-compose",
-                "-p",
-                project_name,
-                "-f",
-                str(compose_file_path),
+            _compose(
                 "port",
                 lab.web_service,
                 str(lab.web_port),
-            ],
+                project=project_name,
+                compose_file=compose_file_path,
+            ),
             check=True,
             capture_output=True,
             text=True,
         )
-        host_port = port_result.stdout.strip().split(":")[-1]
+        host_port = _extract_host_port(port_result.stdout)
         instance_url = f"http://{settings.INSTANCE_PUBLIC_HOST}:{host_port}"
 
         ps_result = subprocess.run(
-            [
-                "docker-compose",
-                "-p",
-                project_name,
-                "-f",
-                str(compose_file_path),
+            _compose(
                 "ps",
                 "-q",
                 lab.web_service,
-            ],
+                project=project_name,
+                compose_file=compose_file_path,
+            ),
             check=True,
             capture_output=True,
             text=True,
@@ -187,17 +274,13 @@ def launch_instance_task(self, instance_id_str, lab_id_str, user_id_str):
         # 拆除這次的殘留，避免重試時衝突或洩漏
         if compose_file_path.exists():
             subprocess.run(
-                [
-                    "docker-compose",
-                    "-p",
-                    project_name,
-                    "-f",
-                    str(compose_file_path),
-                    "down",
-                    "-v",
-                ]
+                _compose("down", "-v", project=project_name, compose_file=compose_file_path)
             )
             os.remove(compose_file_path)
+        # 列已不在（創建中途被手動關閉）就不必重試
+        if not ActiveInstance.objects.filter(id=instance_id).exists():
+            logger.info(f"{instance_id} 已被刪除，停止重試")
+            return
         try:
             raise self.retry(exc=e, countdown=5)
         except self.MaxRetriesExceededError:
@@ -215,17 +298,9 @@ def terminate_instance_task(instance_id_str, container_id):
 
     try:
         if compose_file_path.exists():
-            logger.info(f"docker-compose down {compose_file_path}")
+            logger.info(f"compose down {compose_file_path}")
             subprocess.run(
-                [
-                    "docker-compose",
-                    "-p",
-                    project_name,
-                    "-f",
-                    str(compose_file_path),
-                    "down",
-                    "-v",
-                ],
+                _compose("down", "-v", project=project_name, compose_file=compose_file_path),
                 check=True,
                 capture_output=True,
                 text=True,
@@ -277,15 +352,7 @@ def _teardown_compose_project(project, instance_id_str):
     try:
         if compose_file_path.exists():
             subprocess.run(
-                [
-                    "docker-compose",
-                    "-p",
-                    project,
-                    "-f",
-                    str(compose_file_path),
-                    "down",
-                    "-v",
-                ],
+                _compose("down", "-v", project=project, compose_file=compose_file_path),
                 check=False,
                 capture_output=True,
                 text=True,

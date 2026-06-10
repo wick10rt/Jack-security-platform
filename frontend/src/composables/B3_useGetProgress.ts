@@ -24,8 +24,6 @@ interface ProgressStats {
   pending: number
 }
 
-const PAGE_SIZE = 10
-
 export function useProgress() {
   const authStore = useAuthStore()
   const completions = ref<LabCompletion[]>([])
@@ -37,7 +35,9 @@ export function useProgress() {
   const totalCount = ref(0)
   const hasNext = ref(false)
   const hasPrev = ref(false)
-  const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / PAGE_SIZE)))
+  // 每頁筆數由 API 回應推導（後端 PAGE_SIZE 可調），不寫死
+  const pageSize = ref(10)
+  const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / pageSize.value)))
 
   const fetchStats = async () => {
     try {
@@ -63,6 +63,9 @@ export function useProgress() {
         params: { page },
       })
       completions.value = response.data.results
+      if (response.data.results.length > pageSize.value) {
+        pageSize.value = response.data.results.length
+      }
       totalCount.value = response.data.count
       hasNext.value = !!response.data.next
       hasPrev.value = !!response.data.previous

@@ -5,6 +5,7 @@ interface LabSummary {
   id: string
   title: string
   category: string
+  requires_answer: boolean
 }
 
 interface Paginated<T> {
@@ -13,8 +14,6 @@ interface Paginated<T> {
   previous: string | null
   results: T[]
 }
-
-const PAGE_SIZE = 10
 
 export function getLabList() {
   const labs = ref<LabSummary[]>([])
@@ -30,7 +29,9 @@ export function getLabList() {
   const totalCount = ref(0)
   const hasNext = ref(false)
   const hasPrev = ref(false)
-  const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / PAGE_SIZE)))
+  // 每頁筆數由 API 回應推導（後端 PAGE_SIZE 可調），不寫死
+  const pageSize = ref(10)
+  const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / pageSize.value)))
 
   const fetchLabs = async (page = 1) => {
     isLoading.value = true
@@ -45,6 +46,9 @@ export function getLabList() {
         },
       })
       labs.value = response.data.results
+      if (response.data.results.length > pageSize.value) {
+        pageSize.value = response.data.results.length
+      }
       totalCount.value = response.data.count
       hasNext.value = !!response.data.next
       hasPrev.value = !!response.data.previous

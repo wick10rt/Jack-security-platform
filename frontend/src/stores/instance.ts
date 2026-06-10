@@ -20,9 +20,9 @@ interface ActiveInstance {
   labId: string
   status: string
   instanceUrl: string
-  containerUrl: string
   expiresAt: string
   extensionsUsed: number
+  maxExtensions: number
 }
 
 export const useInstanceStore = defineStore('instance', () => {
@@ -78,9 +78,9 @@ export const useInstanceStore = defineStore('instance', () => {
           labId: labId,
           status: data.status || 'creating',
           instanceUrl: data.instance_url || '',
-          containerUrl: data.container_id || '',
           expiresAt: data.expires_at,
           extensionsUsed: data.extensions_used || 0,
+          maxExtensions: data.max_extensions ?? 2,
         }
         saveToLocalStorage()
 
@@ -92,16 +92,24 @@ export const useInstanceStore = defineStore('instance', () => {
       }
     } catch (err) {
       const errorMsg = errMsg(err, '啟動失敗')
-      error.value = errorMsg
       isLoading.value = false
-      activeInstance.value = null
-      saveToLocalStorage()
-      toast.error(errorMsg)
+      if (statusCode(err) === 409) {
+        // 伺服器上其實已有靶機（另一分頁/裝置）：同步回來，不顯示錯誤（B6）
+        error.value = null
+        await hydrateFromServer()
+        toast.info('你已有一個運行中的靶機，已為你載入。')
+      } else {
+        error.value = errorMsg
+        activeInstance.value = null
+        saveToLocalStorage()
+        toast.error(errorMsg)
+      }
       throw err
     }
   }
 
   const pollInstanceStatus = (instanceId: string, labId: string) => {
+    stopPolling() // 先清掉既有輪詢，避免重複 setInterval 洩漏（B4）
     pollingInterval.value = window.setInterval(async () => {
       try {
         const response = await axios.get(`/instances/${instanceId}/status/`)
@@ -125,9 +133,9 @@ export const useInstanceStore = defineStore('instance', () => {
             labId: labId,
             status: data.status,
             instanceUrl: data.instance_url,
-            containerUrl: data.container_id,
             expiresAt: data.expires_at,
             extensionsUsed: data.extensions_used || 0,
+            maxExtensions: data.max_extensions ?? 2,
           }
           saveToLocalStorage()
 
@@ -191,9 +199,9 @@ export const useInstanceStore = defineStore('instance', () => {
         labId: data.lab_id,
         status: data.status,
         instanceUrl: data.instance_url,
-        containerUrl: data.container_id ?? '',
         expiresAt: data.expires_at,
         extensionsUsed: data.extensions_used ?? 0,
+        maxExtensions: data.max_extensions ?? 2,
       }
       saveToLocalStorage()
 

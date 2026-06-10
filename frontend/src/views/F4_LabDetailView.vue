@@ -220,7 +220,6 @@
 
         <div class="solutions-section">
           <button @click="toggleSolutions" class="solutions-toggle-btn btn btn-secondary">
-            <span class="btn-icon">{{ showSolutions ? '' : '' }}</span>
             {{ showSolutions ? '隱藏他人解法' : '查看他人解法' }}
           </button>
 
@@ -288,7 +287,6 @@ const route = useRoute()
 const labId = toRef(route.params, 'id') as Ref<string>
 const { lab, isLoading, error } = LabDetail(labId)
 
-const maxExtensions = 2
 const safeDescription = computed(() =>
   lab.value?.description ? DOMPurify.sanitize(lab.value.description) : '',
 )
@@ -331,6 +329,7 @@ const {
   instanceStatus,
   isCreating,
   extensionsUsed,
+  maxExtensions,
   isLaunching,
   isTerminating,
   launchError,

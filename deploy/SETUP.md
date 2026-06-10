@@ -43,9 +43,12 @@ cd Jack-security-platform
 它的 Postgres 密碼讀自根目錄 `.env` 的 `DATABASE_PASSWORD`，所以**先做第 3 步建 `.env`**，再回來執行：
 
 ```bash
-docker compose up -d        # Postgres 對外 25000、Redis 6379
+docker compose up -d        # Postgres 127.0.0.1:25000、Redis 127.0.0.1:6379（僅本機可連）
 docker compose ps           # 確認兩個 container 都 Up
 ```
+
+> Postgres/Redis 都刻意只綁 `127.0.0.1`：後端/Celery 走 localhost 連得到，但內網
+> 其他人與「被攻陷的靶機」都碰不到，這是擋靶機跳板打基礎設施的關鍵。
 
 ---
 
@@ -132,6 +135,8 @@ celery -A myproject beat -l info
 ```dotenv
 VITE_API_BASE_URL=http://<HOST_IP>/api
 # VITE_SENTRY_DSN=...            # 要開前端監控才填
+# VITE_ADMIN_URL=...             # 管理員登入後跳轉的 /admin/ 網址；
+#                                # 不填會自動由 VITE_API_BASE_URL 推導（http://<HOST_IP>/admin/）
 ```
 
 build：
@@ -160,7 +165,10 @@ sudo nginx -t && sudo systemctl reload nginx
 
 ---
 
-## 8. 靶機對外連線封鎖（egress 防火牆）
+## 8. 靶機對外連線封鎖（egress 防火牆）— **必做**
+
+靶機是故意做漏的，要假設攻擊者一定拿得到靶機內的 shell。這步是擋他「往外打別人」
+的主防線，**不是選用**。
 
 ```bash
 # 先用 docker network inspect 確認容器網段是否落在 172.16.0.0/12（預設多是）
@@ -170,7 +178,26 @@ sudo bash deploy/egress-firewall.sh.example
 #   - 或包成 systemd unit 開機執行
 ```
 
-套用後，靶機容器無法主動連外（擋跳板/挖礦/打內網），但使用者仍連得進靶機。
+套用後：靶機容器無法主動連外（FORWARD：擋挖礦/打內網/連別人靶機的公開埠），
+也無法直連 host 自身服務（INPUT：擋打 SSH 等 host 上 0.0.0.0 服務）。使用者仍連得進靶機。
+
+## 8.1 容器權限硬化（P1，已內建 + 一個選用主機設定）
+
+- **cap_drop（已自動）**：平台對每個靶機容器強制丟掉 `NET_RAW`（擋同網段 ARP 欺騙/
+  raw 封包）、`SYS_ADMIN`/`DAC_READ_SEARCH`（擋逃逸）等危險 capabilities，清單見後端
+  `INSTANCE_CAP_DROP`。預設清單不影響 apache(:80)/mysql 正常啟動。**換上你自己的靶機
+  鏡像後，請實測它能正常開機**；若你的鏡像需要被擋掉的 cap，調整 `INSTANCE_CAP_DROP`/
+  `INSTANCE_CAP_ADD`（或設 `INSTANCE_CAP_DROP=ALL` 後用 `INSTANCE_CAP_ADD` 精準加回）。
+- **userns-remap（選用、強烈建議）**：讓容器內的 root 對應到 host 上的非特權 UID，
+  萬一發生容器逃逸也不是 host root。編輯 `/etc/docker/daemon.json`：
+
+  ```json
+  { "userns-remap": "default" }
+  ```
+
+  然後 `sudo systemctl restart docker`。注意：開啟後鏡像會以重映射 UID 重新展開、
+  首次較慢；與 `--privileged`、bind-mount 主機路徑不相容（本平台本來就把這些剝掉，故
+  相容）。開啟前先在測試機驗證你的靶機鏡像仍能啟動。
 
 ---
 
@@ -185,6 +212,16 @@ sudo bash deploy/egress-firewall.sh.example
    - **自帶 compose 的題**：把整段 docker-compose YAML 貼進 `compose_template`，
      並設 `web_service`/`web_port`（平台會強制覆寫資源/安全限制、只開受控埠）。
 3. 先 `docker pull` 題目鏡像，避免第一次啟動等太久。
+
+每個 Lab 還有幾個選填的彈性欄位（留空＝用全域預設，不影響既有題）：
+
+- **`web_env`**：一行一個 `KEY=VALUE`，合進 web 服務的環境變數。BYO 鏡像若用不同的
+  DB env 名稱（如 `MYSQL_HOST`、`DATABASE_URL`），在這裡覆寫即可，不必手寫整段 compose。
+- **`expiry_minutes`**：此題靶機存活分鐘數（複雜多步驟題可調長、速解題可調短）。
+- **`max_extensions`**：此題可延長次數上限。
+
+> 答案比對是**大小寫不敏感**＋自動去頭尾空白，學習者不會因大小寫打錯而卡關；
+> 出題者仍應把 flag 格式寫清楚。
 
 ---
 

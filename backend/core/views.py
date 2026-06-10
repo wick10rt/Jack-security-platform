@@ -1,18 +1,14 @@
-import uuid
-import os
-import subprocess
 import logging
 from .tasks import launch_instance_task, terminate_instance_task
-from django.shortcuts import render
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.decorators import method_decorator
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import login
 from datetime import timedelta
 from django.db import transaction
 from django.conf import settings
-from django.http import HttpResponseRedirect, HttpResponseForbidden
 from rest_framework import generics, permissions, status, filters
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -33,7 +29,6 @@ from .serializers import (
     ReflectionSerializer,
 )
 from axes.decorators import axes_dispatch
-from axes.handlers.proxy import AxesProxyHandler
 
 logger = logging.getLogger(__name__)
 
@@ -57,9 +52,13 @@ class HealthCheckView(generics.GenericAPIView):
         try:
             import redis
 
-            redis.from_url(
+            conn = redis.from_url(
                 settings.CELERY_BROKER_URL, socket_connect_timeout=1
-            ).ping()
+            )
+            try:
+                conn.ping()
+            finally:
+                conn.close()
         except Exception:
             redis_ok = False
 
@@ -87,32 +86,28 @@ class UserRegisterView(generics.CreateAPIView):
 @method_decorator(axes_dispatch, name="dispatch")
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
+    throttle_scope = "login"
 
     def post(self, request, *args, **kwargs):
-        username = request.data.get("username")
-        password = request.data.get("password")
-
-        user = authenticate(request=request, username=username, password=password)
-
-        if user is None:
-            AxesProxyHandler.user_login_failed(
-                request=request,
-                sender=self.__class__,
-                credentials={"username": username},
-            )
+        # 只驗證一次：serializer 內的 authenticate() 失敗時 Django 會自動發
+        # user_login_failed 信號給 axes（手動再記會重複計數、鎖定門檻砍半）
+        serializer = self.get_serializer(data=request.data)
+        try:
+            serializer.is_valid(raise_exception=True)
+        except AuthenticationFailed:
             return Response(
                 {"detail": "帳號或密碼錯誤"},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
-        response = super().post(request, *args, **kwargs)
-        if response.status_code == 200:
-            if user.is_staff:
-                login(request, user)
-                response.data["redirect_url"] = "/admin/"
-            else:
-                response.data["redirect_url"] = "/dashboard"
-        return response
+        user = serializer.user
+        data = dict(serializer.validated_data)
+        if user.is_staff:
+            login(request, user)
+            data["redirect_url"] = "/admin/"
+        else:
+            data["redirect_url"] = "/dashboard"
+        return Response(data, status=status.HTTP_200_OK)
 
 
 
@@ -183,9 +178,13 @@ class CommunitySolutionListView(generics.ListAPIView):
         if not is_completed:
             return CommunitySolution.objects.none()
 
-        queryset = CommunitySolution.objects.filter(lab_id=lab_id)
-
-        return queryset
+        # 「他人」解法：排除自己的那份（自己的在防禦表單區塊就看得到），
+        # 固定排序讓分頁結果穩定
+        return (
+            CommunitySolution.objects.filter(lab_id=lab_id)
+            .exclude(user=user)
+            .order_by("id")
+        )
 
 
 
@@ -195,8 +194,10 @@ class UserProgressView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        qs = LabCompletion.objects.filter(user=self.request.user).select_related(
-            "lab"
+        qs = (
+            LabCompletion.objects.filter(user=self.request.user)
+            .select_related("lab")
+            .order_by("id")
         )
         lab = self.request.query_params.get("lab")
         if lab:
@@ -306,9 +307,8 @@ class LaunchInstanceView(generics.GenericAPIView):
                     status=status.HTTP_503_SERVICE_UNAVAILABLE,
                 )
 
-            expires_at = timezone.now() + timedelta(
-                minutes=settings.INSTANCE_EXPIRY_MINUTES
-            )
+            expiry_minutes = lab.expiry_minutes or settings.INSTANCE_EXPIRY_MINUTES
+            expires_at = timezone.now() + timedelta(minutes=expiry_minutes)
             instance = ActiveInstance.objects.create(
                 user=user,
                 lab=lab,
@@ -354,7 +354,8 @@ class ExtendInstanceView(generics.GenericAPIView):
                     {"error": "沒有找到你的靶機"},
                     status=status.HTTP_404_NOT_FOUND,
                 )
-            if instance.extensions_used >= settings.INSTANCE_MAX_EXTENSIONS:
+            cap = instance.lab.max_extensions or settings.INSTANCE_MAX_EXTENSIONS
+            if instance.extensions_used >= cap:
                 return Response(
                     {"error": "已達延長次數上限"},
                     status=status.HTTP_400_BAD_REQUEST,
@@ -390,11 +391,20 @@ class TerminateInstanceView(generics.GenericAPIView):
         instance_id_str = str(instance.id)
         container_id = instance.container_id
 
-        terminate_instance_task.delay(instance_id_str, container_id)
+        # B8：不在此立即刪列，改由拆除 task 完成時刪除，避免「關閉→立刻重開」在拆除
+        # 完成前短暫超出全域上限。task 結尾無論成敗都會刪列。
+        try:
+            terminate_instance_task.delay(instance_id_str, container_id)
+        except Exception as e:
+            # broker 不可用：退而求其次直接刪列，殘留容器交給 reconcile 清
+            logger.error(f"派送 terminate 任務失敗（broker 不可用？）: {e}")
+            instance.delete()
+            return Response(
+                {"message": f"已關閉 {instance_id_str}"},
+                status=status.HTTP_202_ACCEPTED,
+            )
 
-        instance.delete()
         logger.info(f"{instance_id_str} 銷毀任務已排程")
-
         return Response(
             {"message": f"正在銷毀 {instance_id_str}"},
             status=status.HTTP_202_ACCEPTED,
@@ -457,11 +467,18 @@ class SubmitAnswerView(generics.GenericAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        if not lab.solution.strip():
+            # 防呆：答案題卻沒設 solution（繞過 admin 驗證寫入）時，不可讓空白答案誤判通過
+            return Response(
+                {"error": "此實驗尚未設定答案，請聯絡管理員"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         submitted_answer = serializer.validated_data["answer"]
 
-        if submitted_answer.strip() == lab.solution.strip():
+        if submitted_answer.strip().casefold() == lab.solution.strip().casefold():
             completion, created = LabCompletion.objects.get_or_create(
                 user=user, lab=lab, defaults={"status": "pending_reflection"}
             )

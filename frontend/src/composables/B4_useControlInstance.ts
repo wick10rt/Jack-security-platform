@@ -41,6 +41,10 @@ export function useControllInstance(labId: Ref<string>) {
     () => instanceStore.activeInstance?.extensionsUsed ?? 0,
   )
 
+  const maxExtensions = computed(
+    () => instanceStore.activeInstance?.maxExtensions ?? 2,
+  )
+
   const isLaunching = computed(() => isCurrentLabActive.value && instanceStore.isLoading)
 
   const extendInstance = async () => {
@@ -119,6 +123,7 @@ export function useControllInstance(labId: Ref<string>) {
     isCreating,
     expiresAt,
     extensionsUsed,
+    maxExtensions,
     hasAnyInstance,
     isCurrentLabActive,
     isLaunching,

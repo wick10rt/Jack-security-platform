@@ -46,6 +46,7 @@
         >
           <div class="lab-card-header">
             <span class="lab-category">{{ lab.category }}</span>
+            <span v-if="lab.requires_answer === false" class="lab-sandbox-badge">沙盒</span>
           </div>
 
           <div class="lab-card-body">
@@ -280,6 +281,17 @@ const {
   text-transform: uppercase;
   font-weight: 500;
   border: 1px solid var(--border);
+}
+
+.lab-sandbox-badge {
+  padding: 0.4rem 1rem;
+  background: rgba(107, 158, 107, 0.12);
+  color: #4f7a4f;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  letter-spacing: 1px;
+  font-weight: 500;
+  border: 1px solid rgba(107, 158, 107, 0.35);
 }
 
 .lab-card-body {

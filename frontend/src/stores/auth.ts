@@ -10,32 +10,39 @@ interface DecodedToken {
   exp: number
 }
 
+function tokenExpiry(token: string | null): number {
+  if (!token) return 0
+  try {
+    return jwtDecode<{ exp: number }>(token).exp
+  } catch {
+    return 0
+  }
+}
+
 export const useAuthStore = defineStore('auth', () => {
   const accessToken = ref<string | null>(localStorage.getItem('accessToken'))
   const refreshToken = ref<string | null>(localStorage.getItem('refreshToken'))
   const username = ref<string | null>(localStorage.getItem('username'))
   const isAdmin = ref<boolean>(localStorage.getItem('isAdmin') === 'true')
-  const tokenExp = ref<number>(Number(localStorage.getItem('tokenExp')) || 0)
   const isLoggingIn = ref(false)
   const loginError = ref<string | null>(null)
 
   let isRefreshing = false
-  let refreshSubscribers: Array<(token: string) => void> = []
+  let refreshSubscribers: Array<{
+    resolve: (token: string) => void
+    reject: (error: unknown) => void
+  }> = []
 
-  const isAuthenticated = computed(() => {
-    if (!accessToken.value || !tokenExp.value) return false
-    return tokenExp.value * 1000 > Date.now()
-  })
+  // 以 refresh token 的效期判斷登入態：access 過期會由 axios 自動續期，
+  // 不該因為 access 到期（30 分鐘）就把人踢回登入頁
+  const isAuthenticated = computed(() => tokenExpiry(refreshToken.value) * 1000 > Date.now())
 
   function setAuthInfo(access: string, refresh?: string, updateUserInfo = true) {
     accessToken.value = access
     localStorage.setItem('accessToken', access)
 
-    const decodedToken = jwtDecode<DecodedToken>(access)
-    tokenExp.value = decodedToken.exp
-    localStorage.setItem('tokenExp', String(tokenExp.value))
-
     if (updateUserInfo) {
+      const decodedToken = jwtDecode<DecodedToken>(access)
       username.value = decodedToken.username
       isAdmin.value = decodedToken.is_admin
       localStorage.setItem('username', username.value)
@@ -55,7 +62,6 @@ export const useAuthStore = defineStore('auth', () => {
     refreshToken.value = null
     username.value = null
     isAdmin.value = false
-    tokenExp.value = 0
 
     localStorage.removeItem('accessToken')
     localStorage.removeItem('refreshToken')
@@ -120,10 +126,8 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     if (isRefreshing) {
-      return new Promise((resolve) => {
-        refreshSubscribers.push((token: string) => {
-          resolve(token)
-        })
+      return new Promise<string>((resolve, reject) => {
+        refreshSubscribers.push({ resolve, reject })
       })
     }
 
@@ -140,11 +144,15 @@ export const useAuthStore = defineStore('auth', () => {
 
       setAuthInfo(access, undefined, false)
 
-      refreshSubscribers.forEach((callback) => callback(access))
+      refreshSubscribers.forEach((sub) => sub.resolve(access))
       refreshSubscribers = []
 
       return access
-    } catch {
+    } catch (err) {
+      // 失敗時逐一 reject 排隊中的並發請求，否則它們會 hang 到 timeout（B7）
+      const subscribers = refreshSubscribers
+      refreshSubscribers = []
+      subscribers.forEach((sub) => sub.reject(err))
       clearAuthInfo()
       throw new Error('刷新 token 失敗')
     } finally {

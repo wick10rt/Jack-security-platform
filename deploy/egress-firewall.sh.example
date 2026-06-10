@@ -5,9 +5,13 @@
 # 目的：讓靶機容器「不能主動連外」（擋跳板 / 挖礦 / 打內網），
 #       但仍允許使用者從內網連進靶機（inbound 的回程流量放行）。
 #
-# 原理：在 Docker 的 DOCKER-USER 鏈（FORWARD 路徑）插入規則：
-#   - 放行已建立連線的回程（使用者 → 靶機 的回應）
-#   - 丟棄「來源是容器網段、且為新發起」的封包（即容器主動對外）
+# 原理：分兩條路徑下手——
+#   1) DOCKER-USER 鏈（FORWARD 路徑，container↔外部/其他容器）：
+#      - 放行已建立連線的回程（使用者 → 靶機 的回應）
+#      - 丟棄「來源是容器網段、且為新發起」的封包（即容器主動對外）
+#   2) INPUT 鏈（container → host 本機服務）：DOCKER-USER 只管 FORWARD，管不到
+#      容器直連 host 自身埠。靶機沒有任何理由要連 host，故一律丟棄其新發起連線
+#      （Postgres/Redis 已綁 127.0.0.1 碰不到；這條再補上 host 上其他 0.0.0.0 服務如 SSH）。
 #   同一 compose 網路內的 web↔db 走同一 bridge，屬 L2 不經 FORWARD，不受影響。
 #   Docker 內建 DNS(127.0.0.11) 由容器內部處理，封外連不影響服務名解析。
 #
@@ -24,10 +28,16 @@ CONTAINER_SUBNET="172.16.0.0/12"
 # 先清掉本腳本可能殘留的同類規則（冪等）
 iptables -D DOCKER-USER -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN 2>/dev/null || true
 iptables -D DOCKER-USER -s "$CONTAINER_SUBNET" -m conntrack --ctstate NEW -j DROP 2>/dev/null || true
+iptables -D INPUT -s "$CONTAINER_SUBNET" -m conntrack --ctstate NEW -j DROP 2>/dev/null || true
 
-# 插入（注意順序：後插入者在鏈的上方，故先插 DROP 再插 RETURN）
+# (1) FORWARD：擋容器主動對外（注意順序：後插入者在鏈的上方，故先插 DROP 再插 RETURN）
 iptables -I DOCKER-USER -s "$CONTAINER_SUBNET" -m conntrack --ctstate NEW -j DROP
 iptables -I DOCKER-USER -m conntrack --ctstate ESTABLISHED,RELATED -j RETURN
 
+# (2) INPUT：擋容器直連 host 本機服務（縱深防禦）
+iptables -I INPUT -s "$CONTAINER_SUBNET" -m conntrack --ctstate NEW -j DROP
+
 echo "已套用 egress 封鎖規則。目前 DOCKER-USER 鏈："
 iptables -L DOCKER-USER -n --line-numbers
+echo "INPUT 鏈（容器 → host 阻擋）："
+iptables -L INPUT -n --line-numbers | grep "$CONTAINER_SUBNET" || true

@@ -41,7 +41,9 @@
         >
           {{ extensionsUsed >= maxExtensions ? '已達延長上限' : `延長 (${extensionsUsed}/${maxExtensions})` }}
         </button>
-        <button class="bar-btn danger" @click="terminate">關閉</button>
+        <button class="bar-btn danger" :disabled="instanceStore.isLoading" @click="terminate">
+          關閉
+        </button>
       </span>
     </div>
   </div>
@@ -54,10 +56,10 @@ import { storeToRefs } from 'pinia'
 import Swal from 'sweetalert2'
 import { useInstanceStore } from '@/stores/instance'
 
-const maxExtensions = 2
-
 const instanceStore = useInstanceStore()
 const { activeInstance: instance } = storeToRefs(instanceStore)
+
+const maxExtensions = computed(() => instance.value?.maxExtensions ?? 2)
 
 const now = ref(Date.now())
 let timer: number | undefined

@@ -85,9 +85,14 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "register": env("THROTTLE_REGISTER", default="10/hour"),
         "submit_answer": env("THROTTLE_SUBMIT_ANSWER", default="30/min"),
+        # axes 只鎖「單一帳號」，輪換帳號名的暴力嘗試靠這條 IP 節流擋
+        "login": env("THROTTLE_LOGIN", default="30/min"),
     },
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": env.int("PAGE_SIZE", default=10),
+    # nginx 後面才有 X-Forwarded-For：設代理層數，DRF 節流才會用真正的 client IP，
+    # 不會被使用者自帶 XFF 偽造繞過（單層 nginx = 1；無代理的 dev 不影響）
+    "NUM_PROXIES": env.int("NUM_PROXIES", default=1),
 }
 
 ROOT_URLCONF = "myproject.urls"
@@ -123,10 +128,12 @@ DATABASES = {
     }
 }
 
-AUTHENTICATION_BACKENDS = {
+# 必須是有序 list：AxesBackend 要先於 ModelBackend 檢查鎖定，
+# 否則鎖定期間輸入正確密碼仍會登入成功
+AUTHENTICATION_BACKENDS = [
     "axes.backends.AxesBackend",
     "django.contrib.auth.backends.ModelBackend",
-}
+]
 
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -269,11 +276,45 @@ INSTANCE_DB_MEM = env("INSTANCE_DB_MEM", default="512m")
 INSTANCE_DB_IMAGE = env("INSTANCE_DB_IMAGE", default="mysql:8.0")
 INSTANCE_PIDS_LIMIT = env.int("INSTANCE_PIDS_LIMIT", default=256)
 
+# 靶機編排用的 compose 指令。預設 v2 plugin（`docker compose`）；只有舊的 v1-only
+# 主機才需設成 docker-compose。逗號分隔，例：DOCKER_COMPOSE_CMD=docker-compose
+DOCKER_COMPOSE_CMD = env.list("DOCKER_COMPOSE_CMD", default=["docker", "compose"])
+
 INSTANCE_BIND_HOST = env("INSTANCE_BIND_HOST", default="127.0.0.1")
 INSTANCE_PUBLIC_HOST = env("INSTANCE_PUBLIC_HOST", default="127.0.0.1")
 INSTANCE_MAX_EXTENSIONS = env.int("INSTANCE_MAX_EXTENSIONS", default=2)
 INSTANCE_EXTENSION_MINUTES = env.int("INSTANCE_EXTENSION_MINUTES", default=30)
 INSTANCE_ORPHAN_GRACE_MINUTES = env.int("INSTANCE_ORPHAN_GRACE_MINUTES", default=5)
+
+# 靶機容器強制丟掉的 Linux capabilities（P1 權限硬化）。預設清單只移除「正常
+# web/db 用不到、但能拿來打別人或逃逸」的 cap —— 關鍵是 NET_RAW（擋同網段 ARP
+# 欺騙/raw 封包）與 SYS_ADMIN/DAC_READ_SEARCH（擋逃逸）。apache 綁 80 需要的
+# NET_BIND_SERVICE 與 mysql/apache 啟動需要的 CHOWN/SETUID… 都不在清單內，故不破壞
+# 既有靶機。要更嚴可設成 INSTANCE_CAP_DROP=ALL 並用 INSTANCE_CAP_ADD 自行加回。
+INSTANCE_CAP_DROP = env.list(
+    "INSTANCE_CAP_DROP",
+    default=[
+        "NET_RAW",
+        "NET_ADMIN",
+        "SYS_ADMIN",
+        "SYS_MODULE",
+        "SYS_PTRACE",
+        "SYS_RAWIO",
+        "SYS_BOOT",
+        "SYS_TIME",
+        "DAC_READ_SEARCH",
+        "MKNOD",
+        "AUDIT_WRITE",
+        "AUDIT_CONTROL",
+        "LINUX_IMMUTABLE",
+        "MAC_OVERRIDE",
+        "MAC_ADMIN",
+        "SYSLOG",
+        "WAKE_ALARM",
+        "BLOCK_SUSPEND",
+    ],
+)
+INSTANCE_CAP_ADD = env.list("INSTANCE_CAP_ADD", default=[])
 
 
 LOGGING = {

@@ -55,7 +55,28 @@ INSTANCE_PUBLIC_HOST=127.0.0.1
 VITE_API_BASE_URL=http://127.0.0.1:8000/api
 ```
 
-### 3. Backend Setup
+### 一鍵啟動（開發，推薦）
+
+設定好上面兩個 `.env` 後，用根目錄的 `run.py` 跨平台一鍵起所有服務
+（Postgres/Redis + Django + Celery worker/beat + 前端）：
+
+```bash
+# 首次：建 venv、裝前後端依賴、migrate，然後啟動
+python run.py --setup
+
+# 之後每次
+python run.py
+```
+
+`Ctrl+C` 會一次收掉所有服務（Postgres/Redis 留背景，需要時 `python run.py --stop`）。
+其他旗標：`--no-frontend`（不起前端）、`--dry-run`（只印將執行的指令）。
+
+> 要進管理後台（F5）仍需自行建管理員：`cd backend` 後
+> `python manage.py createsuperuser`（venv 啟用下）。
+
+想手動逐步啟動（或正式部署）見下方步驟，正式環境請改用 `deploy/SETUP.md`。
+
+### 3. Backend Setup（手動）
 
 **a. 啟動資料庫**
 

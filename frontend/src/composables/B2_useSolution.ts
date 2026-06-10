@@ -14,8 +14,6 @@ interface Paginated<T> {
   results: T[]
 }
 
-const PAGE_SIZE = 10
-
 export function useSolutions(labId: Ref<string>, submissionStatus: Ref<string>) {
   const solutions = ref<Solution[]>([])
   const showSolutions = ref(false)
@@ -26,7 +24,9 @@ export function useSolutions(labId: Ref<string>, submissionStatus: Ref<string>) 
   const totalCount = ref(0)
   const hasNext = ref(false)
   const hasPrev = ref(false)
-  const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / PAGE_SIZE)))
+  // 每頁筆數由 API 回應推導（後端 PAGE_SIZE 可調），不寫死
+  const pageSize = ref(10)
+  const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / pageSize.value)))
 
   const fetchSolutions = async (page = 1) => {
     isLoading.value = true
@@ -37,6 +37,9 @@ export function useSolutions(labId: Ref<string>, submissionStatus: Ref<string>) 
         { params: { page } },
       )
       solutions.value = response.data.results
+      if (response.data.results.length > pageSize.value) {
+        pageSize.value = response.data.results.length
+      }
       totalCount.value = response.data.count
       hasNext.value = !!response.data.next
       hasPrev.value = !!response.data.previous

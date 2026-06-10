@@ -1,4 +1,5 @@
 import uuid
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
@@ -47,6 +48,15 @@ class Lab(models.Model):
         default=80,
         help_text="對外服務在容器內監聽的埠。",
     )
+    web_env = models.TextField(
+        blank=True,
+        default="",
+        help_text=(
+            "此題 web 服務的額外環境變數，一行一個 KEY=VALUE（# 開頭為註解）。"
+            "會覆蓋/補上預設模板的 DB_* 設定，讓 BYO 鏡像用不同 env 名稱時"
+            "不必手寫整段 compose_template。"
+        ),
+    )
     needs_db = models.BooleanField(
         default=True,
         help_text="compose_template 留空時是否附加一個 mysql 容器。不需 DB 的題取消勾選。",
@@ -54,8 +64,27 @@ class Lab(models.Model):
     db_image = models.CharField(
         max_length=255,
         default="mysql:8.0",
-        help_text="compose_template 留空且 needs_db 時使用的 DB 鏡像（如 mysql:5.6）。",
+        help_text=(
+            "compose_template 留空且 needs_db 時使用的 DB 鏡像（如 mysql:5.6）。"
+            "請用 mysql 8.0 或 5.x：8.4+ 已移除 native_password 啟動旗標，會起不來。"
+        ),
     )
+    expiry_minutes = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="此題靶機存活分鐘數；留空＝用全域 INSTANCE_EXPIRY_MINUTES。",
+    )
+    max_extensions = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="此題最多可延長次數；留空＝用全域 INSTANCE_MAX_EXTENSIONS。",
+    )
+
+    def clean(self):
+        if self.requires_answer and not self.solution.strip():
+            raise ValidationError(
+                {"solution": "需要提交答案的實驗必須填寫 solution（flag 字串），否則無人能完成。"}
+            )
 
     def __str__(self):
         return self.title
