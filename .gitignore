@@ -37,3 +37,22 @@ backend/celerybeat-schedule*
 
 #忽略靶機檔案
 instances/
+
+# collectstatic 產物
+backend/staticfiles/
+
+# 本地設計原稿與 Office 暫存（設計檔不入庫，見專案 memory 註記）
+*.docx
+~$*
+_word_extract.txt
+
+# 測試 / 型別 / lint 快取
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# 一般暫存檔
+*.tmp
+*.bak

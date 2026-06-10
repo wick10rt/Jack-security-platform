@@ -1,4 +1,8 @@
-# 啟動 D3–資料庫服務 (postgreSQL)
+# 啟動 D3–資料庫服務 (postgreSQL) + Redis broker
+#
+# 兩者都只綁 127.0.0.1：單機部署時後端/Celery 走 localhost 即可連到，
+# 但內網其他人與「被攻陷的靶機容器」都碰不到（容器路由到 host 是經 bridge
+# gateway，碰不到 host 的 loopback）。這是擋「靶機當跳板打基礎設施」的關鍵一條。
 
 services:
   db:
@@ -11,12 +15,12 @@ services:
       - POSTGRES_USER=platform_user
       - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
     ports:
-      - "25000:5432"
+      - "127.0.0.1:25000:5432"
   redis:
     image: "redis:alpine"
     container_name: security_platform_redis
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
 
 volumes:
   postgres_data:

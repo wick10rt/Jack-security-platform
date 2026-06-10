@@ -1,7 +1,6 @@
 <template>
   <div class="auth-container">
     <div class="auth-form-wrapper fade-in-up">
-      <!-- EE-0 使用者註冊 -->
       <form v-if="isRegisterMode" @submit.prevent="handleRegister" class="auth-form">
         <h2 class="auth-title">創建你的帳號</h2>
         <p class="auth-subtitle">加入我們和張胖胖一起成長</p>
@@ -74,7 +73,6 @@
         </p>
       </form>
 
-      <!-- EE-1 使用者登入 -->
       <form v-else @submit.prevent="handleLogin" class="auth-form">
         <h2 class="auth-title">登入你的帳號</h2>
         <p class="auth-subtitle">張胖胖歡迎你</p>

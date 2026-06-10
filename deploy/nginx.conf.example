@@ -1,0 +1,55 @@
+# Jack Security Platform — 內網單機 nginx 範本 (純 HTTP)
+#
+# 用法：
+#   1. 把 < > 的部分填成你的實際值
+#   2. 前端先 `npm run build`，把 frontend/dist 放到 root 指定路徑
+#   3. 後端用 gunicorn/uvicorn 跑在 127.0.0.1:8000
+#   4. 放到 /etc/nginx/conf.d/jack.conf，執行 `nginx -t && systemctl reload nginx`
+#
+# 注意：靶機本身是另一組 port（INSTANCE_PUBLIC_HOST:<隨機port>），使用者直接連，
+#       不經過這個 nginx，所以這裡不需要反代靶機。
+
+upstream jack_backend {
+    server 127.0.0.1:8000;
+}
+
+server {
+    listen 80;
+    server_name <主機內網 IP 或主機名>;
+
+    client_max_body_size 10m;
+
+    # 前端 SPA（vite build 產物）
+    root <你的 frontend/dist 絕對路徑>;
+    index index.html;
+
+    # 後端 API
+    location /api/ {
+        proxy_pass http://jack_backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Django Admin（F5）
+    location /admin/ {
+        proxy_pass http://jack_backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Django 靜態檔（admin CSS 等）：collectstatic 後由 nginx 直接服務（較快）
+    location /static/ {
+        alias <你的 backend/staticfiles 絕對路徑，結尾要有 />/;
+        access_log off;
+        expires 7d;
+    }
+
+    # 前端 history-mode 路由 fallback
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

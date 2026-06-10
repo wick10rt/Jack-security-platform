@@ -1,12 +1,10 @@
+from django.conf import settings
 from django.http import HttpResponseNotFound
 
 ALLOWED_QUERY_KEY = "admin_key"
-ALLOWED_QUERY_VALUE = "@1121717dogdog1101737fatfat"
 SESSION_FLAG = "admin_key_verified"
 
 
-# C-2
-# 其他使用者不可以訪問管理員頁面
 class HideAdminMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
@@ -21,7 +19,8 @@ class HideAdminMiddleware:
             if request.session.get(SESSION_FLAG):
                 return self.get_response(request)
 
-            if request.GET.get(ALLOWED_QUERY_KEY) == ALLOWED_QUERY_VALUE:
+            admin_key = getattr(settings, "ADMIN_ACCESS_KEY", "")
+            if admin_key and request.GET.get(ALLOWED_QUERY_KEY) == admin_key:
                 request.session[SESSION_FLAG] = True
                 return self.get_response(request)
 

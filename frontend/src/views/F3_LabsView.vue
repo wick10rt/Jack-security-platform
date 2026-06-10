@@ -5,19 +5,37 @@
       <p class="page-subtitle">來跟張胖胖一起學習</p>
     </div>
 
-    <!-- 載入狀態 -->
+    <div class="filter-bar fade-in">
+      <input
+        v-model="search"
+        class="filter-input"
+        type="text"
+        placeholder="搜尋實驗標題或描述…"
+        @keyup.enter="applyFilters"
+      />
+      <select v-model="category" class="filter-select" @change="applyFilters">
+        <option value="">全部分類</option>
+        <option v-for="c in categories" :key="c" :value="c">{{ c }}</option>
+      </select>
+      <select v-model="ordering" class="filter-select" @change="applyFilters">
+        <option value="title">標題 ↑</option>
+        <option value="-title">標題 ↓</option>
+        <option value="category">分類 ↑</option>
+        <option value="-category">分類 ↓</option>
+      </select>
+      <button class="btn btn-primary filter-btn" @click="applyFilters">搜尋</button>
+    </div>
+
     <div v-if="isLoading" class="loading-container fade-in">
       <div class="spinner"></div>
       <p class="loading-text">正在載入實驗列表...</p>
     </div>
 
-    <!-- 錯誤狀態 -->
     <div v-if="error" class="error-container fade-in">
       <div class="error-icon">⚠️</div>
       <p class="error-text">{{ error }}</p>
     </div>
 
-    <!-- EE-3 使用者查看實驗清單 -->
     <div v-if="!isLoading && !error" class="lab-content">
       <div v-if="labs.length > 0" class="lab-grid">
         <div
@@ -28,6 +46,7 @@
         >
           <div class="lab-card-header">
             <span class="lab-category">{{ lab.category }}</span>
+            <span v-if="lab.requires_answer === false" class="lab-sandbox-badge">沙盒</span>
           </div>
 
           <div class="lab-card-body">
@@ -47,11 +66,19 @@
         </div>
       </div>
 
-      <!-- 沒有資料狀態 -->
       <div v-else class="empty-state fade-in-up">
         <p class="empty-text">目前沒有可用的實驗</p>
         <p class="empty-hint">敬請期待張胖胖增加更多精彩內容</p>
       </div>
+
+      <PaginationControls
+        :current-page="currentPage"
+        :total-pages="totalPages"
+        :has-prev="hasPrev"
+        :has-next="hasNext"
+        @prev="prevPage"
+        @next="nextPage"
+      />
     </div>
   </div>
 </template>
@@ -59,8 +86,24 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
 import { getLabList } from '@/composables/B2_useGetLabs'
+import PaginationControls from '@/components/PaginationControls.vue'
 
-const { labs, isLoading, error } = getLabList()
+const {
+  labs,
+  isLoading,
+  error,
+  search,
+  category,
+  ordering,
+  categories,
+  applyFilters,
+  currentPage,
+  totalPages,
+  hasNext,
+  hasPrev,
+  nextPage,
+  prevPage,
+} = getLabList()
 </script>
 
 <style scoped>
@@ -91,6 +134,45 @@ const { labs, isLoading, error } = getLabList()
   color: var(--text);
   opacity: 0.7;
   letter-spacing: 1px;
+}
+
+.filter-bar {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.filter-input {
+  flex: 1;
+  min-width: 220px;
+  padding: 0.7rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-base);
+  background: var(--white);
+  color: var(--text);
+}
+
+.filter-select {
+  padding: 0.7rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  color: var(--text);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.filter-input:focus,
+.filter-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.filter-btn {
+  padding: 0.7rem 1.5rem;
 }
 
 .loading-container {
@@ -199,6 +281,17 @@ const { labs, isLoading, error } = getLabList()
   text-transform: uppercase;
   font-weight: 500;
   border: 1px solid var(--border);
+}
+
+.lab-sandbox-badge {
+  padding: 0.4rem 1rem;
+  background: rgba(107, 158, 107, 0.12);
+  color: #4f7a4f;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  letter-spacing: 1px;
+  font-weight: 500;
+  border: 1px solid rgba(107, 158, 107, 0.35);
 }
 
 .lab-card-body {

@@ -5,37 +5,29 @@
       <p class="dashboard-subtitle">記錄你在張胖胖平台的每一步</p>
     </div>
 
-    <!-- EE-2 使用者查看學習進度 -->
     <div class="dashboard-content">
-      <!-- 載入狀態 -->
       <div v-if="isLoading" class="loading-state fade-in">
         <div class="spinner"></div>
         <p class="loading-text">正在獲取數據...</p>
       </div>
 
-      <!-- 錯誤狀態 -->
       <div v-else-if="error" class="error-state fade-in">
         <div class="error-icon">⚠️</div>
         <p class="error-text">{{ error }}</p>
       </div>
 
-      <!-- 有數據狀態 -->
       <div v-else-if="completions.length > 0" class="completions-container">
         <div class="stats-summary fade-in-up">
           <div class="stat-card">
-            <div class="stat-number">{{ completions.length }}</div>
+            <div class="stat-number">{{ stats.total }}</div>
             <div class="stat-label">學習紀錄</div>
           </div>
           <div class="stat-card">
-            <div class="stat-number">
-              {{ completions.filter((c) => c.status === 'completed').length }}
-            </div>
+            <div class="stat-number">{{ stats.completed }}</div>
             <div class="stat-label">已完成</div>
           </div>
           <div class="stat-card">
-            <div class="stat-number">
-              {{ completions.filter((c) => c.status !== 'completed').length }}
-            </div>
+            <div class="stat-number">{{ stats.pending }}</div>
             <div class="stat-label">進行中</div>
           </div>
         </div>
@@ -59,16 +51,23 @@
             </div>
           </li>
         </ul>
+
+        <PaginationControls
+          :current-page="currentPage"
+          :total-pages="totalPages"
+          :has-prev="hasPrev"
+          :has-next="hasNext"
+          @prev="prevPage"
+          @next="nextPage"
+        />
       </div>
 
-      <!-- 沒有數據狀態 -->
       <div v-else class="empty-state fade-in-up">
         <p class="empty-text">這裡空空如也!!!</p>
         <p class="empty-hint">開始你跟張胖胖的學習之旅吧</p>
       </div>
     </div>
 
-    <!-- 底部按鈕 -->
     <div class="dashboard-footer fade-in-up delay-2">
       <RouterLink to="/labs" class="nav-link">
         <button class="btn btn-primary">
@@ -83,8 +82,20 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
 import { useProgress } from '@/composables/B3_useGetProgress'
+import PaginationControls from '@/components/PaginationControls.vue'
 
-const { completions, isLoading, error } = useProgress()
+const {
+  completions,
+  stats,
+  isLoading,
+  error,
+  currentPage,
+  totalPages,
+  hasNext,
+  hasPrev,
+  nextPage,
+  prevPage,
+} = useProgress()
 </script>
 
 <style scoped>

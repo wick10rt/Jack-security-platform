@@ -16,28 +16,35 @@ import os
 from datetime import timedelta
 from celery.schedules import crontab
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# 使用env環境
 env = environ.Env(DEBUG=(bool, False))
 
 environ.Env.read_env(os.path.join(BASE_DIR.parent, ".env"))
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env("SECRET_KEY")
 
-# SECURITY WARNING: don't run with debug turned on in production!
 
-# TODO 測試改的 要改回 False
-DEBUG = True
+DEBUG = env("DEBUG")
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
+
+ADMIN_ACCESS_KEY = env("ADMIN_ACCESS_KEY", default="")
+
+if not DEBUG:
+    # 純 HTTP 內網部署時，把下面三個 *_SECURE / SSL_REDIRECT 設為 False，
+    # 否則 Secure cookie 不會送出、會強制轉址 https，導致 admin 登不進去。
+    SECURE_SSL_REDIRECT = env.bool("SECURE_SSL_REDIRECT", default=True)
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = env.bool("SESSION_COOKIE_SECURE", default=True)
+    CSRF_COOKIE_SECURE = env.bool("CSRF_COOKIE_SECURE", default=True)
+    SECURE_HSTS_SECONDS = env.int("SECURE_HSTS_SECONDS", default=31536000)
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 
 
-# Application definition
 
 INSTALLED_APPS = [
     "corsheaders",
@@ -48,6 +55,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
     "core.apps.CoreConfig",
     "axes",
 ]
@@ -56,6 +64,7 @@ MIDDLEWARE = [
     "axes.middleware.AxesMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -70,6 +79,20 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+    "DEFAULT_THROTTLE_CLASSES": (
+        "rest_framework.throttling.ScopedRateThrottle",
+    ),
+    "DEFAULT_THROTTLE_RATES": {
+        "register": env("THROTTLE_REGISTER", default="10/hour"),
+        "submit_answer": env("THROTTLE_SUBMIT_ANSWER", default="30/min"),
+        # axes 只鎖「單一帳號」，輪換帳號名的暴力嘗試靠這條 IP 節流擋
+        "login": env("THROTTLE_LOGIN", default="30/min"),
+    },
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": env.int("PAGE_SIZE", default=10),
+    # nginx 後面才有 X-Forwarded-For：設代理層數，DRF 節流才會用真正的 client IP，
+    # 不會被使用者自帶 XFF 偽造繞過（單層 nginx = 1；無代理的 dev 不影響）
+    "NUM_PROXIES": env.int("NUM_PROXIES", default=1),
 }
 
 ROOT_URLCONF = "myproject.urls"
@@ -92,30 +115,27 @@ TEMPLATES = [
 WSGI_APPLICATION = "myproject.wsgi.application"
 
 
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "platform_db",
-        "USER": "platform_user",
+        "NAME": env("DATABASE_NAME", default="platform_db"),
+        "USER": env("DATABASE_USER", default="platform_user"),
         "PASSWORD": env("DATABASE_PASSWORD"),
-        "HOST": "127.0.0.1",
-        "PORT": "25000",
+        "HOST": env("DATABASE_HOST", default="127.0.0.1"),
+        "PORT": env("DATABASE_PORT", default="25000"),
+        "CONN_MAX_AGE": env.int("DATABASE_CONN_MAX_AGE", default=60),
     }
 }
 
-# Axes 設定
-AUTHENTICATION_BACKENDS = {
+# 必須是有序 list：AxesBackend 要先於 ModelBackend 檢查鎖定，
+# 否則鎖定期間輸入正確密碼仍會登入成功
+AUTHENTICATION_BACKENDS = [
     "axes.backends.AxesBackend",
     "django.contrib.auth.backends.ModelBackend",
-}
+]
 
-# Password validation
-# https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
-# 密碼驗證
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "pwned_passwords_django.validators.PwnedPasswordsValidator",
@@ -127,13 +147,13 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
         "OPTIONS": {
             "user_attributes": ("username", "password"),
-            "max_similarity": 0.5,  # 與 username 相似度小於0.5
+            "max_similarity": 0.5,
         },
     },
     {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
         "OPTIONS": {
-            "min_length": 12,  # 密碼至少12個字元
+            "min_length": 12,
         },
     },
     {
@@ -145,37 +165,40 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-# Internationalization
-# https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "zh-hant"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "Asia/Taipei"
 
 USE_I18N = True
 
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# 使用自訂的 User Model
 AUTH_USER_MODEL = "core.User"
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=180),
+    "ACCESS_TOKEN_LIFETIME": timedelta(
+        minutes=env.int("ACCESS_TOKEN_MINUTES", default=30)
+    ),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
 }
 
-# Axes 設定
 AXES_FAILURE_LIMIT = 20
 AXES_COOLOFF_TIME = timedelta(minutes=30)
 AXES_WINDOW = timedelta(minutes=15)
@@ -183,12 +206,11 @@ AXES_RESET_ON_SUCCESS = True
 AXES_USE_ADMIN_SITE = True
 AXES_LOCKOUT_PARAMETERS = ["username"]
 
-# CORS_ALLOW_ALL_ORIGINS = True
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
+CORS_ALLOWED_ORIGINS = env.list(
+    "CORS_ALLOWED_ORIGINS",
+    default=["http://localhost:5173", "http://127.0.0.1:5173"],
+)
 CORS_EXPOSE_HEADERS = ["Location"]
 
 CORS_ALLOW_METHODS = [
@@ -209,18 +231,121 @@ CORS_ALLOW_HEADERS = [
     "x-requested-with",
 ]
 
-# Celery 設定
-CELERY_BROKER_URL = "redis://127.0.0.1:6379/0"
-CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379/0"
+CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://127.0.0.1:6379/0")
+CELERY_RESULT_BACKEND = env(
+    "CELERY_RESULT_BACKEND", default="redis://127.0.0.1:6379/0"
+)
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "Asia/Taipei"
 
-# Celery 每分鐘自動執行一次清理任務
 CELERY_BEAT_SCHEDULE = {
     "cleanup_instances_every_minute": {
         "task": "core.tasks.cleanup_expired_instances",
         "schedule": crontab(),
+    },
+    "reconcile_instances_every_5_minutes": {
+        "task": "core.tasks.reconcile_instances",
+        "schedule": crontab(minute="*/5"),
+    },
+}
+
+
+SENTRY_DSN = env("SENTRY_DSN", default="")
+if SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+    from sentry_sdk.integrations.celery import CeleryIntegration
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[DjangoIntegration(), CeleryIntegration()],
+        traces_sample_rate=env.float("SENTRY_TRACES_SAMPLE_RATE", default=0.0),
+        send_default_pii=False,
+        environment=env("SENTRY_ENVIRONMENT", default="production"),
+    )
+
+
+ACTIVEINSTANCE_LIMIT = env.int("ACTIVEINSTANCE_LIMIT", default=30)
+INSTANCE_EXPIRY_MINUTES = env.int("INSTANCE_EXPIRY_MINUTES", default=30)
+INSTANCE_WEB_CPUS = env.float("INSTANCE_WEB_CPUS", default=0.5)
+INSTANCE_WEB_MEM = env("INSTANCE_WEB_MEM", default="512m")
+INSTANCE_DB_CPUS = env.float("INSTANCE_DB_CPUS", default=1.0)
+INSTANCE_DB_MEM = env("INSTANCE_DB_MEM", default="512m")
+INSTANCE_DB_IMAGE = env("INSTANCE_DB_IMAGE", default="mysql:8.0")
+INSTANCE_PIDS_LIMIT = env.int("INSTANCE_PIDS_LIMIT", default=256)
+
+# 靶機編排用的 compose 指令。預設 v2 plugin（`docker compose`）；只有舊的 v1-only
+# 主機才需設成 docker-compose。逗號分隔，例：DOCKER_COMPOSE_CMD=docker-compose
+DOCKER_COMPOSE_CMD = env.list("DOCKER_COMPOSE_CMD", default=["docker", "compose"])
+
+INSTANCE_BIND_HOST = env("INSTANCE_BIND_HOST", default="127.0.0.1")
+INSTANCE_PUBLIC_HOST = env("INSTANCE_PUBLIC_HOST", default="127.0.0.1")
+INSTANCE_MAX_EXTENSIONS = env.int("INSTANCE_MAX_EXTENSIONS", default=2)
+INSTANCE_EXTENSION_MINUTES = env.int("INSTANCE_EXTENSION_MINUTES", default=30)
+INSTANCE_ORPHAN_GRACE_MINUTES = env.int("INSTANCE_ORPHAN_GRACE_MINUTES", default=5)
+
+# 靶機容器強制丟掉的 Linux capabilities（P1 權限硬化）。預設清單只移除「正常
+# web/db 用不到、但能拿來打別人或逃逸」的 cap —— 關鍵是 NET_RAW（擋同網段 ARP
+# 欺騙/raw 封包）與 SYS_ADMIN/DAC_READ_SEARCH（擋逃逸）。apache 綁 80 需要的
+# NET_BIND_SERVICE 與 mysql/apache 啟動需要的 CHOWN/SETUID… 都不在清單內，故不破壞
+# 既有靶機。要更嚴可設成 INSTANCE_CAP_DROP=ALL 並用 INSTANCE_CAP_ADD 自行加回。
+INSTANCE_CAP_DROP = env.list(
+    "INSTANCE_CAP_DROP",
+    default=[
+        "NET_RAW",
+        "NET_ADMIN",
+        "SYS_ADMIN",
+        "SYS_MODULE",
+        "SYS_PTRACE",
+        "SYS_RAWIO",
+        "SYS_BOOT",
+        "SYS_TIME",
+        "DAC_READ_SEARCH",
+        "MKNOD",
+        "AUDIT_WRITE",
+        "AUDIT_CONTROL",
+        "LINUX_IMMUTABLE",
+        "MAC_OVERRIDE",
+        "MAC_ADMIN",
+        "SYSLOG",
+        "WAKE_ALARM",
+        "BLOCK_SUSPEND",
+    ],
+)
+INSTANCE_CAP_ADD = env.list("INSTANCE_CAP_ADD", default=[])
+
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {name} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": env("LOG_LEVEL", default="INFO"),
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": env("DJANGO_LOG_LEVEL", default="INFO"),
+            "propagate": False,
+        },
+        "core": {
+            "handlers": ["console"],
+            "level": env("LOG_LEVEL", default="INFO"),
+            "propagate": False,
+        },
     },
 }

@@ -1,5 +1,6 @@
 import { computed } from 'vue'
 import axios from '@/axios'
+import { isAxiosError } from 'axios'
 import type { Ref } from 'vue'
 import { useToast } from 'vue-toastification'
 import Swal from 'sweetalert2'
@@ -28,9 +29,32 @@ export function useControllInstance(labId: Ref<string>) {
     return null
   })
 
+  const isCreating = computed(
+    () => isCurrentLabActive.value && instanceStore.activeInstance?.status === 'creating',
+  )
+
+  const expiresAt = computed(() =>
+    isCurrentLabActive.value ? instanceStore.activeInstance?.expiresAt || null : null,
+  )
+
+  const extensionsUsed = computed(
+    () => instanceStore.activeInstance?.extensionsUsed ?? 0,
+  )
+
+  const maxExtensions = computed(
+    () => instanceStore.activeInstance?.maxExtensions ?? 2,
+  )
+
   const isLaunching = computed(() => isCurrentLabActive.value && instanceStore.isLoading)
 
-  // EE-5 啟動靶機
+  const extendInstance = async () => {
+    try {
+      await instanceStore.extendInstance()
+    } catch (err) {
+      console.error('Extend instance error:', err)
+    }
+  }
+
   const launchInstance = async () => {
     if (hasAnyInstance.value && !isCurrentLabActive.value) {
       toast.warning('你已經有一個靶機在運行了，請先關閉它。')
@@ -39,12 +63,11 @@ export function useControllInstance(labId: Ref<string>) {
 
     try {
       await instanceStore.launchInstance(labId.value)
-    } catch (err: any) {
+    } catch (err) {
       console.error('Launch instance error:', err)
     }
   }
 
-  // EE-11 手動關閉靶機
   const terminateInstance = async () => {
     const result = await Swal.fire({
       title: '確定要關閉靶機嗎？',
@@ -58,13 +81,12 @@ export function useControllInstance(labId: Ref<string>) {
     if (result.isConfirmed) {
       try {
         await instanceStore.terminateInstance()
-      } catch (err: any) {
+      } catch (err) {
         console.error('Terminate instance error:', err)
       }
     }
   }
 
-  // 進入靶機
   const accessInstance = async () => {
     if (!instanceStore.activeInstance) {
       toast.warning('靶機尚未就緒，請稍候。')
@@ -82,10 +104,11 @@ export function useControllInstance(labId: Ref<string>) {
       } else {
         toast.error('無法獲取靶機 URL')
       }
-    } catch (error: any) {
-      if (error.response?.status === 403) {
+    } catch (error) {
+      const code = isAxiosError(error) ? error.response?.status : undefined
+      if (code === 403) {
         toast.error('無權訪問此靶機')
-      } else if (error.response?.status === 404) {
+      } else if (code === 404) {
         toast.error('靶機不存在')
       } else {
         toast.error('進入靶機時出現錯誤，請重試')
@@ -97,6 +120,10 @@ export function useControllInstance(labId: Ref<string>) {
   return {
     instanceUrl,
     instanceStatus,
+    isCreating,
+    expiresAt,
+    extensionsUsed,
+    maxExtensions,
     hasAnyInstance,
     isCurrentLabActive,
     isLaunching,
@@ -104,6 +131,7 @@ export function useControllInstance(labId: Ref<string>) {
     launchError: computed(() => instanceStore.error),
     launchInstance,
     terminateInstance,
+    extendInstance,
     accessInstance,
   }
 }

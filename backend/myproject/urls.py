@@ -18,15 +18,18 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import include, path
-from core.views import UserRegisterView, MyTokenObtainPairView
+from rest_framework_simplejwt.views import TokenRefreshView
+from core.views import UserRegisterView, MyTokenObtainPairView, LogoutView
 
 urlpatterns = [
-    # EE-9 進入管理員頁面
     path("admin/", admin.site.urls),
-    # EE-0 使用者註冊
     path("api/auth/register/", UserRegisterView.as_view(), name="register"),
-    # EE-1 使用者登入
     path("api/auth/login/", MyTokenObtainPairView.as_view(), name="token_obtain_pair"),
-    # C-1 需要 Token 認證的 API
+    path(
+        "api/auth/token/refresh/",
+        TokenRefreshView.as_view(),
+        name="token_refresh",
+    ),
+    path("api/auth/logout/", LogoutView.as_view(), name="logout"),
     path("api/", include("core.urls")),
 ]

@@ -1,27 +1,23 @@
 from rest_framework import serializers
+from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
-from django.db import transaction
 from .models import Lab, User, LabCompletion, ActiveInstance, CommunitySolution
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 
-# B1 登入驗證服務
 
 
-# IE-0 使用者註冊
 class UserRegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["username", "password"]
         extra_kwargs = {"password": {"write_only": True}}
 
-    # S1 驗證密碼強度
     def validate_password(self, value):
         user = self.instance or User(username=self.initial_data.get("username"))
         validate_password(value, user)
         return value
 
-    # 新增使用者
     def create(self, validated_data):
         user = User.objects.create_user(
             username=validated_data["username"], password=validated_data["password"]
@@ -29,8 +25,6 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         return user
 
 
-# IE-1 使用者身份驗證
-# S4 產生 JWT
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
@@ -40,34 +34,28 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         return token
 
 
-# B2 實驗內容服務
 
 
-# IE-3 實驗清單
 class LabSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lab
-        fields = ["id", "title", "category"]
+        fields = ["id", "title", "category", "requires_answer"]
 
 
-# IE-4 實驗詳情
 class LabDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lab
-        fields = ["id", "title", "description", "category"]
+        fields = ["id", "title", "description", "category", "requires_answer"]
 
 
-# IE-8 他人解法
 class CommunitySolutionSerializer(serializers.ModelSerializer):
     class Meta:
         model = CommunitySolution
         fields = ["reflection", "payload"]
 
 
-# B3 使用者資料服務
 
 
-# IE-2 學習進度
 class LabCompletionSerializer(serializers.ModelSerializer):
     lab_id = serializers.PrimaryKeyRelatedField(source="lab", read_only=True)
     lab_title = serializers.CharField(source="lab.title", read_only=True)
@@ -82,31 +70,45 @@ class LabCompletionSerializer(serializers.ModelSerializer):
         return data
 
 
-# IE-7 防禦表單
 class ReflectionSerializer(serializers.ModelSerializer):
+    payload = serializers.CharField(max_length=2000)
+    reflection = serializers.CharField(max_length=5000)
+
     class Meta:
         model = CommunitySolution
         fields = ["id", "user", "lab", "payload", "reflection"]
         read_only_fields = ["id", "user", "lab"]
 
 
-# B4 靶機分配服務
 
 
-# IE-5 啟動靶機
 class ActiveInstanceSerializer(serializers.ModelSerializer):
     user = serializers.StringRelatedField(read_only=True)
     lab = serializers.StringRelatedField(read_only=True)
+    lab_id = serializers.PrimaryKeyRelatedField(source="lab", read_only=True)
+    max_extensions = serializers.SerializerMethodField()
 
     class Meta:
         model = ActiveInstance
-        fields = ["id", "user", "lab", "instance_url", "expires_at"]
-        read_only_fields = ["id", "user", "lab", "instance_url", "expires_at"]
+        fields = [
+            "id",
+            "user",
+            "lab",
+            "lab_id",
+            "status",
+            "instance_url",
+            "extensions_used",
+            "max_extensions",
+            "expires_at",
+        ]
+        read_only_fields = fields
+
+    def get_max_extensions(self, obj):
+        # 讓前端跟著後端設定走，不必把上限寫死在 UI；每題可覆寫全域預設
+        return obj.lab.max_extensions or settings.INSTANCE_MAX_EXTENSIONS
 
 
-# B5 答案驗證服務
 
 
-# IE-6 提交答案
 class SubmissionSerializer(serializers.Serializer):
     answer = serializers.CharField(max_length=255)

@@ -1,31 +1,95 @@
 import uuid
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
 
-# S3 使用物件關聯對應定義資料庫的資料結構
-# D3 資料庫服務
 
 
-# User表 U1~U4
 class User(AbstractUser):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
 
-# Lab表 L1~L6
 class Lab(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=255, unique=True)
     description = models.TextField()
     category = models.CharField(max_length=100)
-    solution = models.TextField()
-    docker_image = models.CharField(max_length=255)
+    solution = models.TextField(
+        blank=True,
+        default="",
+        help_text="固定答案題要交回的 flag 字串；純跑靶機題（requires_answer 取消勾選）留空即可。",
+    )
+    requires_answer = models.BooleanField(
+        default=True,
+        help_text="是否需要提交答案。取消勾選＝純跑靶機沙盒：無答案、無防禦表單、不計完成、不進社群解法。",
+    )
+    docker_image = models.CharField(
+        max_length=255,
+        help_text="單一容器靶機的 web 鏡像。多服務題改用下方 compose_template。",
+    )
+    compose_template = models.TextField(
+        blank=True,
+        default="",
+        help_text=(
+            "留空 → 依 needs_db/db_image 自動產生 web(+mysql)。"
+            "多服務（php+nginx、postgres…）在此貼完整 docker-compose YAML。"
+            "對外服務設為 web_service；其餘自動內部互通。"
+            "設定/程式碼需烤進鏡像（平台不掛主機檔），"
+            "平台只對外開 web_service:web_port 並強制套用資源/安全限制。"
+        ),
+    )
+    web_service = models.CharField(
+        max_length=100,
+        default="web",
+        help_text="compose 中要對使用者開埠的服務名稱。",
+    )
+    web_port = models.PositiveIntegerField(
+        default=80,
+        help_text="對外服務在容器內監聽的埠。",
+    )
+    web_env = models.TextField(
+        blank=True,
+        default="",
+        help_text=(
+            "此題 web 服務的額外環境變數，一行一個 KEY=VALUE（# 開頭為註解）。"
+            "會覆蓋/補上預設模板的 DB_* 設定，讓 BYO 鏡像用不同 env 名稱時"
+            "不必手寫整段 compose_template。"
+        ),
+    )
+    needs_db = models.BooleanField(
+        default=True,
+        help_text="compose_template 留空時是否附加一個 mysql 容器。不需 DB 的題取消勾選。",
+    )
+    db_image = models.CharField(
+        max_length=255,
+        default="mysql:8.0",
+        help_text=(
+            "compose_template 留空且 needs_db 時使用的 DB 鏡像（如 mysql:5.6）。"
+            "請用 mysql 8.0 或 5.x：8.4+ 已移除 native_password 啟動旗標，會起不來。"
+        ),
+    )
+    expiry_minutes = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="此題靶機存活分鐘數；留空＝用全域 INSTANCE_EXPIRY_MINUTES。",
+    )
+    max_extensions = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="此題最多可延長次數；留空＝用全域 INSTANCE_MAX_EXTENSIONS。",
+    )
+
+    def clean(self):
+        if self.requires_answer and not self.solution.strip():
+            raise ValidationError(
+                {"solution": "需要提交答案的實驗必須填寫 solution（flag 字串），否則無人能完成。"}
+            )
 
     def __str__(self):
         return self.title
 
 
-# CommunitySolution表 CS1~CS5
 class CommunitySolution(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     lab = models.ForeignKey(
@@ -35,7 +99,6 @@ class CommunitySolution(models.Model):
     payload = models.TextField(blank=False, null=False)
     reflection = models.TextField(blank=False, null=False)
 
-    # 一個使用者對同一個實驗只能有一個解法
     class Meta:
         unique_together = ("lab", "user")
 
@@ -43,7 +106,6 @@ class CommunitySolution(models.Model):
         return f"{self.lab.title} other's solution"
 
 
-# LabCompletion表 LC1~LC4
 class LabCompletion(models.Model):
     status_choices = [
         ("pending_reflection", "Pending Reflection"),
@@ -55,7 +117,6 @@ class LabCompletion(models.Model):
     lab = models.ForeignKey(Lab, on_delete=models.CASCADE, related_name="completions")
     status = models.CharField(max_length=50, choices=status_choices)
 
-    # 一個使用者對同一個實驗只能有一個紀錄
     class Meta:
         unique_together = ("user", "lab")
 
@@ -63,17 +124,26 @@ class LabCompletion(models.Model):
         return f"{self.user.username} - {self.lab.title} ({self.status})"
 
 
-# ActiveInstance表 AI1~AI7
 class ActiveInstance(models.Model):
+    status_choices = [
+        ("creating", "Creating"),
+        ("running", "Running"),
+        ("error", "Error"),
+    ]
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="active_instances"
     )
     lab = models.ForeignKey(Lab, on_delete=models.CASCADE)
-    instance_url = models.CharField(max_length=255)
-    container_id = models.CharField(max_length=255)
+    status = models.CharField(
+        max_length=20, choices=status_choices, default="creating", db_index=True
+    )
+    instance_url = models.CharField(max_length=255, blank=True, default="")
+    container_id = models.CharField(max_length=255, blank=True, default="")
+    extensions_used = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
-    expires_at = models.DateTimeField()
+    expires_at = models.DateTimeField(db_index=True)
 
     def __str__(self):
         return f"{self.user.username} create a {self.lab.title} instance"

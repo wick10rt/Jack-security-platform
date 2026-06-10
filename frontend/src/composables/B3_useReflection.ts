@@ -22,13 +22,11 @@ export function useReflection(labId: Ref<string>, submissionStatus: Ref<string>)
   const submissionSuccess = ref(false)
   const isLoading = ref(false)
 
-  // 獲取已存在的防禦表單內容
   const fetchReflection = async () => {
     isLoading.value = true
     try {
       const response = await myaxios.get<ReflectionResponse>(`/labs/${labId.value}/reflection/`)
 
-      // 如果有已存在的內容，填入表單
       if (response.data) {
         reflectionForm.payload = response.data.payload
         reflectionForm.reflection = response.data.reflection
@@ -52,13 +50,11 @@ export function useReflection(labId: Ref<string>, submissionStatus: Ref<string>)
     { immediate: true }
   )
 
-  // EE-7 使用者提交表單
   const submitReflection = async () => {
     isSubmitting.value = true
     submissionError.value = null
     submissionSuccess.value = false
 
-    // IE-7 B3 處理防禦表單
     try {
       await myaxios.post<ReflectionResponse>(`/labs/${labId.value}/reflection/`, {
         reflection: reflectionForm.reflection,
