@@ -178,8 +178,10 @@ sudo bash deploy/egress-firewall.sh.example
 
 1. 用 `?admin_key=<ADMIN_ACCESS_KEY>` 第一次進 `http://<HOST_IP>/admin/`（或用 superuser 登入）。
 2. 新增 `Lab`：
-   - **固定答案題**：填 `solution`（使用者要交回的 flag 字串）、`docker_image`，
-     `compose_template` 留空即用預設 web+mysql 模板。
+   - **固定答案題**：勾選 `requires_answer`（預設），填 `solution`（使用者要交回的 flag
+     字串）、`docker_image`，`compose_template` 留空即用預設 web+mysql 模板。
+   - **純跑靶機題（沙盒）**：取消勾選 `requires_answer`，`solution` 可留空。使用者只會看到
+     啟動/進入靶機，沒有提交答案、防禦表單、社群解法，也不計入完成進度。
    - **自帶 compose 的題**：把整段 docker-compose YAML 貼進 `compose_template`，
      並設 `web_service`/`web_port`（平台會強制覆寫資源/安全限制、只開受控埠）。
 3. 先 `docker pull` 題目鏡像，避免第一次啟動等太久。
@@ -195,6 +197,52 @@ curl http://<HOST_IP>/api/health/      # 期望 {"status":"ok","database":true}
 - 註冊 → 登入 → 進 Lab → 啟動靶機（狀態 creating→running）→ 點「進入靶機」應開到
   `http://<HOST_IP>:<port>` → 提交正確 flag → 填防禦表單 → 看他人解法。
 - 30 分鐘後靶機自動銷毀；Celery beat 每分鐘清過期、每 5 分鐘對帳孤兒。
+
+---
+
+## 11. 容量規劃與靶機存取控制（取捨）
+
+### 同時靶機數量怎麼抓
+
+`ACTIVEINSTANCE_LIMIT` 是「全域同時靶機數」的硬上限（預設 30）。但真正的天花板是**主機
+RAM**，不是這個數字。每個靶機的記憶體上限由設定決定（`INSTANCE_WEB_MEM` +
+`INSTANCE_DB_MEM`，預設各 `512m`）：
+
+- 需要 DB 的題：web 512m + mysql 512m ≈ **1GB/靶機**
+- 不需 DB / 純跑靶機題（`needs_db` 取消）：只有 web ≈ **0.5GB/靶機**
+
+抓上限的公式：
+
+```
+ACTIVEINSTANCE_LIMIT ≈ (主機RAM_GB − 系統與服務保留 4~8GB) / 每靶機GB
+```
+
+例：32GB 主機、全是 needs_db 題 → `(32 − 6) / 1 ≈ 26`，設 25~28 較穩（預設 30 是抓 32GB
+機器的樂觀值）。要撐 40 人同時，三條路：加 RAM、多用「不需 DB 的題」、或調低
+`INSTANCE_DB_MEM`（換 mariadb 或 mysql:5.6 較省）。
+
+CPU 採超賣無妨（`INSTANCE_WEB_CPUS`/`INSTANCE_DB_CPUS` 是上限不是保留，靶機多半閒置）；
+先撞到的幾乎一定是 RAM。
+
+降 churn 壓力的旋鈕：`INSTANCE_EXPIRY_MINUTES`（預設 30）、`INSTANCE_MAX_EXTENSIONS`
+（預設 2）、`INSTANCE_EXTENSION_MINUTES`（預設 30）。課堂越短、人越多，就把到期時間調短、
+延長次數壓低，加速回收。
+
+### 靶機存取控制現況（重要取捨）
+
+靶機綁在 `INSTANCE_BIND_HOST:<隨機port>`（部署設 `<HOST_IP>`），使用者瀏覽器**直連、不經
+nginx**。這代表：
+
+- 同網段任何人只要猜到 `HOST_IP:port`，就能連進**別人的**靶機 —— 平台只擋「拿 URL」這個
+  API（owner 限定），**不擋容器埠本身**。
+- 在「校內、信任使用者、靶機是故意做漏的練習機、裡面無真資料」的前提下，此風險可接受，
+  是目前刻意的設計取捨。
+- 已有防線：第 8 步的 egress 防火牆擋住靶機**主動連外**（跳板/挖礦/打內網）。建議再用主機
+  防火牆把靶機 port range（docker 預設高位埠）限制成只接受校園網段來源。
+
+要更強隔離（屬日後強化、非 MVP）：把靶機改只綁 `127.0.0.1`，前面加反向代理
+（nginx/Traefik）依「每實例一組 owner token/cookie」動態路由才連得進去 —— 那會把 §7 的
+nginx 從「只反代 /api /admin」擴成「也反代每個靶機」。
 
 ---
 

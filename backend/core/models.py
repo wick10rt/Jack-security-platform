@@ -14,7 +14,15 @@ class Lab(models.Model):
     title = models.CharField(max_length=255, unique=True)
     description = models.TextField()
     category = models.CharField(max_length=100)
-    solution = models.TextField()
+    solution = models.TextField(
+        blank=True,
+        default="",
+        help_text="固定答案題要交回的 flag 字串；純跑靶機題（requires_answer 取消勾選）留空即可。",
+    )
+    requires_answer = models.BooleanField(
+        default=True,
+        help_text="是否需要提交答案。取消勾選＝純跑靶機沙盒：無答案、無防禦表單、不計完成、不進社群解法。",
+    )
     docker_image = models.CharField(
         max_length=255,
         help_text="單一容器靶機的 web 鏡像。多服務題改用下方 compose_template。",

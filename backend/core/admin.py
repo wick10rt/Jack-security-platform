@@ -34,8 +34,8 @@ class UserAdmin(admin.ModelAdmin):
 
 @admin.register(Lab)
 class LabAdmin(admin.ModelAdmin):
-    list_display = ("title", "category", "docker_image", "needs_db")
-    list_filter = ("category", "needs_db")
+    list_display = ("title", "category", "docker_image", "needs_db", "requires_answer")
+    list_filter = ("category", "needs_db", "requires_answer")
     search_fields = ("title", "description")
 
     def formfield_for_dbfield(self, db_field, request, **kwargs):

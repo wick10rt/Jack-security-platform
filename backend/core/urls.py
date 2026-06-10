@@ -16,6 +16,7 @@ from .views import (
     TerminateInstanceView,
     ExtendInstanceView,
     InstanceStatusView,
+    CurrentInstanceView,
 )
 
 
@@ -89,5 +90,10 @@ urlpatterns = [
         "instances/extend/",
         ExtendInstanceView.as_view(),
         name="extend-instance",
+    ),
+    path(
+        "instances/current/",
+        CurrentInstanceView.as_view(),
+        name="current-instance",
     ),
 ]

@@ -510,3 +510,91 @@ class InstanceOwnershipTests(BaseTest):
         self.client.force_authenticate(self.other)
         res = self.client.get(reverse("access-instance", args=[self.instance.id]))
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class SandboxLabTests(BaseTest):
+    def setUp(self):
+        super().setUp()
+        self.user = User.objects.create_user(
+            username="sandboxer", password="a-very-long-pass"
+        )
+        self.lab = make_lab(requires_answer=False, solution="")
+        self.client.force_authenticate(self.user)
+
+    def test_submit_answer_rejected_for_sandbox_lab(self):
+        res = self.client.post(
+            reverse("answer-submit", args=[self.lab.id]),
+            {"answer": "anything"},
+        )
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(
+            LabCompletion.objects.filter(user=self.user, lab=self.lab).exists()
+        )
+
+    def test_reflection_rejected_for_sandbox_lab(self):
+        res = self.client.post(
+            reverse("submit-reflection", args=[self.lab.id]),
+            {"payload": "p", "reflection": "r"},
+        )
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_normal_answer_lab_unaffected(self):
+        answer_lab = make_lab(solution="flag{ok}")
+        res = self.client.post(
+            reverse("answer-submit", args=[answer_lab.id]),
+            {"answer": "flag{ok}"},
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["status"], "pending_reflection")
+
+
+class CurrentInstanceTests(BaseTest):
+    def setUp(self):
+        super().setUp()
+        self.lab = make_lab()
+        self.user = User.objects.create_user(
+            username="curuser", password="a-very-long-pass"
+        )
+        self.client.force_authenticate(self.user)
+
+    def _make_instance(self, **kwargs):
+        defaults = dict(
+            user=self.user,
+            lab=self.lab,
+            status="running",
+            instance_url="http://127.0.0.1:1",
+            container_id="c",
+            expires_at=timezone.now() + timedelta(minutes=30),
+        )
+        defaults.update(kwargs)
+        return ActiveInstance.objects.create(**defaults)
+
+    def test_no_instance_returns_204(self):
+        res = self.client.get(reverse("current-instance"))
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_running_instance_returned_with_lab_id(self):
+        inst = self._make_instance()
+        res = self.client.get(reverse("current-instance"))
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(str(res.data["id"]), str(inst.id))
+        self.assertEqual(str(res.data["lab_id"]), str(self.lab.id))
+        self.assertEqual(res.data["status"], "running")
+
+    def test_error_instance_not_returned(self):
+        self._make_instance(status="error")
+        res = self.client.get(reverse("current-instance"))
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_expired_instance_not_returned(self):
+        self._make_instance(expires_at=timezone.now() - timedelta(minutes=1))
+        res = self.client.get(reverse("current-instance"))
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_other_users_instance_not_returned(self):
+        other = User.objects.create_user(
+            username="curother", password="a-very-long-pass"
+        )
+        self._make_instance(user=other)
+        res = self.client.get(reverse("current-instance"))
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)

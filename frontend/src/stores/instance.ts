@@ -173,49 +173,64 @@ export const useInstanceStore = defineStore('instance', () => {
     }
   }
 
-  const initializeFromStorage = async () => {
-    if (!activeInstance.value) return
-
-    const { id, labId } = activeInstance.value
-
-    if (activeInstance.value.status === 'running') {
-      return
-    }
-
+  // 以 server 為唯一真實來源：進站/登入後用此 hydrate，localStorage 只是樂觀快取
+  const hydrateFromServer = async () => {
     try {
-      const response = await axios.get(`/instances/${id}/status/`)
-      const data = response.data
+      const response = await axios.get('/instances/current/')
 
-      if (data.status === 'running') {
-        activeInstance.value = {
-          id: data.id,
-          labId: labId,
-          status: data.status,
-          instanceUrl: data.instance_url,
-          containerUrl: data.container_id,
-          expiresAt: data.expires_at,
-          extensionsUsed: data.extensions_used || 0,
-        }
-        saveToLocalStorage()
-        toast.success('靶機已就緒！')
-      } else if (data.status === 'error') {
+      if (response.status === 204 || !response.data || !response.data.id) {
+        stopPolling()
         activeInstance.value = null
         saveToLocalStorage()
-        toast.error('靶機啟動失敗，請重試')
-      } else {
+        return
+      }
+
+      const data = response.data
+      activeInstance.value = {
+        id: data.id,
+        labId: data.lab_id,
+        status: data.status,
+        instanceUrl: data.instance_url,
+        containerUrl: data.container_id ?? '',
+        expiresAt: data.expires_at,
+        extensionsUsed: data.extensions_used ?? 0,
+      }
+      saveToLocalStorage()
+
+      if (data.status === 'creating') {
         isLoading.value = true
-        pollInstanceStatus(id, labId)
-        toast.info('靶機正在創建中...')
+        pollInstanceStatus(data.id, data.lab_id)
       }
     } catch (error) {
-      console.error('Failed to initialize from storage:', error)
+      // 網路錯誤時保留 localStorage 的樂觀值，不做破壞性清除
+      console.error('hydrateFromServer 失敗:', error)
+    }
+  }
 
-      const code = statusCode(error)
-      if (code === 404 || code === 403) {
-        activeInstance.value = null
-        saveToLocalStorage()
-        toast.warning('之前的靶機已過期')
+  const handleExpired = () => {
+    if (!activeInstance.value) return
+    stopPolling()
+    activeInstance.value = null
+    saveToLocalStorage()
+    isLoading.value = false
+    toast.info('靶機已到期並自動關閉')
+  }
+
+  const accessInstance = async () => {
+    if (!activeInstance.value) {
+      toast.warning('靶機尚未就緒，請稍候。')
+      return
+    }
+    try {
+      const response = await axios.get(`/instances/${activeInstance.value.id}/access/`)
+      const targetUrl = response.data.target_url
+      if (targetUrl) {
+        window.open(targetUrl, '_blank')
+      } else {
+        toast.error('無法獲取靶機 URL')
       }
+    } catch {
+      toast.error('進入靶機時出現錯誤，請重試')
     }
   }
 
@@ -246,6 +261,8 @@ export const useInstanceStore = defineStore('instance', () => {
     terminateInstance,
     extendInstance,
     stopPolling,
-    initializeFromStorage,
+    hydrateFromServer,
+    handleExpired,
+    accessInstance,
   }
 })

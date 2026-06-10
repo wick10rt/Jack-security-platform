@@ -27,6 +27,8 @@
       </div>
     </header>
 
+    <InstanceStatusBar v-if="authStore.isAuthenticated" />
+
     <main class="main-content">
       <RouterView />
     </main>
@@ -42,6 +44,7 @@ import { RouterLink, RouterView, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { onMounted, watch } from 'vue'
 import { useInstanceStore } from '@/stores/instance'
+import InstanceStatusBar from '@/components/InstanceStatusBar.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -49,7 +52,7 @@ const instanceStore = useInstanceStore()
 
 onMounted(() => {
   if (authStore.isAuthenticated) {
-    instanceStore.initializeFromStorage()
+    instanceStore.hydrateFromServer()
   }
 })
 
@@ -57,7 +60,7 @@ watch(
   () => authStore.isAuthenticated,
   (isAuth) => {
     if (isAuth) {
-      instanceStore.initializeFromStorage()
+      instanceStore.hydrateFromServer()
     } else {
       instanceStore.stopPolling()
       instanceStore.activeInstance = null

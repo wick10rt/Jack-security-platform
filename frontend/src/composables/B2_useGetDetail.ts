@@ -8,6 +8,7 @@ interface LabDetail {
   title: string
   description: string
   category: string
+  requires_answer: boolean
 }
 
 export function LabDetail(labId: Ref<string>) {

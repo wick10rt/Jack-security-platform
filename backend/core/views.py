@@ -240,6 +240,12 @@ class ReflectionView(generics.GenericAPIView):
         lab_id = self.kwargs.get("id")
         lab = get_object_or_404(Lab, id=lab_id)
 
+        if not lab.requires_answer:
+            return Response(
+                {"error": "此實驗為純跑靶機題，沒有防禦表單"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -402,6 +408,25 @@ class InstanceStatusView(generics.RetrieveAPIView):
     lookup_field = "id"
 
 
+class CurrentInstanceView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ActiveInstanceSerializer
+
+    def get(self, request, *args, **kwargs):
+        instance = (
+            ActiveInstance.objects.filter(
+                user=request.user, expires_at__gt=timezone.now()
+            )
+            .exclude(status="error")
+            .order_by("-created_at")
+            .first()
+        )
+        if instance is None:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
 class AccessInstanceView(generics.GenericAPIView):
     permission_classes = [IsAuthenticated, IsInstanceOwner]
     queryset = ActiveInstance.objects.all()
@@ -425,6 +450,12 @@ class SubmitAnswerView(generics.GenericAPIView):
         lab_id = self.kwargs.get("id")
         lab = get_object_or_404(Lab, id=lab_id)
         user = request.user
+
+        if not lab.requires_answer:
+            return Response(
+                {"error": "此實驗為純跑靶機題，不需提交答案"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)

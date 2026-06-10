@@ -45,7 +45,7 @@ class LabSerializer(serializers.ModelSerializer):
 class LabDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lab
-        fields = ["id", "title", "description", "category"]
+        fields = ["id", "title", "description", "category", "requires_answer"]
 
 
 class CommunitySolutionSerializer(serializers.ModelSerializer):
@@ -85,6 +85,7 @@ class ReflectionSerializer(serializers.ModelSerializer):
 class ActiveInstanceSerializer(serializers.ModelSerializer):
     user = serializers.StringRelatedField(read_only=True)
     lab = serializers.StringRelatedField(read_only=True)
+    lab_id = serializers.PrimaryKeyRelatedField(source="lab", read_only=True)
 
     class Meta:
         model = ActiveInstance
@@ -92,6 +93,7 @@ class ActiveInstanceSerializer(serializers.ModelSerializer):
             "id",
             "user",
             "lab",
+            "lab_id",
             "status",
             "instance_url",
             "extensions_used",

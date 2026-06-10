@@ -95,11 +95,19 @@ work happens in `core/tasks.py`, triggered from `core/views.py`. This is the
   `ports`/`privileged`/`cap_add`, publishing only one controlled
   `127.0.0.1::<web_port>` on the web service. Labs are pure targets; the answer
   model stays a fixed-string match (`SubmitAnswerView`), so non-flag vuln types
-  are authored to emit a static flag on success.
+  are authored to emit a static flag on success — or set `requires_answer=False`
+  (the `solution` may be blank) to make the lab a pure sandbox: no answer,
+  reflection, or completion, just launch-and-explore.
 - **Constraints** (enforced in `LaunchInstanceView` inside a
   `select_for_update()` transaction): one active instance per user (C-3); a
   global cap of `settings.ACTIVEINSTANCE_LIMIT` (default 30, C-9); instances
   expire `settings.INSTANCE_EXPIRY_MINUTES` (default 30) after creation (C-4).
+- **Current** (`CurrentInstanceView`, `/api/instances/current/`): returns the
+  caller's live instance (non-error, unexpired) or `204`. The SPA treats the
+  server as the source of truth — the `instance` store hydrates from this on load
+  (`hydrateFromServer`), so a running instance survives a cleared `localStorage`
+  or a second device; `ActiveInstanceSerializer` exposes `lab_id` for it. A global
+  status bar (`InstanceStatusBar.vue`) renders the live countdown + extend/close.
 - **Extend**: `ExtendInstanceView` (`/api/instances/extend/`) pushes `expires_at`
   out by `INSTANCE_EXTENSION_MINUTES`, up to `INSTANCE_MAX_EXTENSIONS` times.
 - **Teardown**: `terminate_instance_task` (manual, EE-11/IE-11, via
@@ -142,7 +150,9 @@ SE-10). A correct answer (`SubmitAnswerView`, EE-6) creates/sets
 `pending_reflection`; submitting the reflection form (`ReflectionView`, EE-7)
 creates the `CommunitySolution` and promotes the status to `completed`. Community
 solutions for a lab are only visible to users who have `completed` that lab
-(`CommunitySolutionListView`, C-6).
+(`CommunitySolutionListView`, C-6). Labs with `requires_answer=False` opt out of
+this whole flow — `SubmitAnswerView`/`ReflectionView` return 400 and no
+`LabCompletion` is created — so sandbox labs never enter the state machine.
 
 ### Security controls (from the design doc, S-series)
 

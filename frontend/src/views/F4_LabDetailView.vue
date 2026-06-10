@@ -109,6 +109,14 @@
         <p v-if="launchError" class="error-message fade-in">{{ launchError }}</p>
       </section>
 
+      <section v-if="!requiresAnswer" class="sandbox-section card">
+        <h2 class="section-title">純跑靶機題</h2>
+        <p class="sandbox-hint">
+          這個實驗沒有標準答案，啟動靶機後自由探索即可，無需提交答案或防禦表單。
+        </p>
+      </section>
+
+      <template v-if="requiresAnswer">
       <section
         v-if="
           !isLoadingStatus &&
@@ -260,6 +268,7 @@
           </div>
         </div>
       </section>
+      </template>
     </article>
   </div>
 </template>
@@ -283,6 +292,8 @@ const maxExtensions = 2
 const safeDescription = computed(() =>
   lab.value?.description ? DOMPurify.sanitize(lab.value.description) : '',
 )
+
+const requiresAnswer = computed(() => lab.value?.requires_answer !== false)
 
 const {
   answer,
@@ -531,6 +542,13 @@ const {
   border-radius: var(--radius-sm);
   overflow-x: auto;
   border: 1px solid var(--border);
+}
+
+.sandbox-hint {
+  line-height: 1.8;
+  color: var(--text);
+  opacity: 0.85;
+  margin: 0;
 }
 
 .action-block,
